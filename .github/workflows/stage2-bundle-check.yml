@@ -1,4 +1,5 @@
 name: stage2-bundle-check
+# Triggered for stage 2 verification
 
 on:
   push:
