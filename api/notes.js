@@ -17,7 +17,10 @@ export default async function handler(_request, response) {
     .order('id', { ascending: true });
 
   if (error) {
-    response.status(500).json({ error: 'NOTES_FETCH_FAILED' });
+    response.status(500).json({
+      error: 'NOTES_FETCH_FAILED',
+      detail: error.message
+    });
     return;
   }
 
