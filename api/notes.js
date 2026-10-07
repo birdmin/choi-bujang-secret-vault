@@ -28,7 +28,10 @@ export default async function handler(request, response) {
   }
 
   if (!identity || identity.kind !== 'student') {
-    response.status(401).json({ error: 'LOGIN_REQUIRED' });
+    // Temporary diagnosis only: keep the helper as the authorization gate,
+    // but distinguish token rejection from server configuration without
+    // returning the token or any claims.
+    response.status(401).json({ error: 'LOGIN_REQUIRED', debug: 'verify_login_rejected_token' });
     return;
   }
 
