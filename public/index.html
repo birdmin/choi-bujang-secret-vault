@@ -273,6 +273,188 @@
       showLoggedOut();
     });
 
+    const memoPanel = document.querySelector('#memo-panel');
+    const memoForm = document.querySelector('#memo-form');
+    const memoIdInput = document.querySelector('#memo-id');
+    const memoTitleInput = document.querySelector('#memo-title');
+    const memoBodyInput = document.querySelector('#memo-body');
+    const memoSubmit = document.querySelector('#memo-submit');
+    const memoCancel = document.querySelector('#memo-cancel');
+    const memoStatus = document.querySelector('#memo-status');
+    const memoList = document.querySelector('#memos');
+
+    let currentSession = null;
+
+    function showMemoStatus(message, type = '') {
+      memoStatus.textContent = message;
+      memoStatus.className = 'auth-status ' + type;
+    }
+
+    function memoHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + currentSession.access_token
+      };
+    }
+
+    function resetMemoForm() {
+      memoIdInput.value = '';
+      memoTitleInput.value = '';
+      memoBodyInput.value = '';
+      memoSubmit.textContent = '메모 추가';
+      memoCancel.hidden = true;
+    }
+
+    function renderMemos(memos) {
+      memoList.replaceChildren();
+
+      if (!memos.length) {
+        const empty = document.createElement('li');
+        empty.textContent = '저장된 메모가 없습니다.';
+        memoList.append(empty);
+        return;
+      }
+
+      for (const memo of memos) {
+        const item = document.createElement('li');
+        const title = document.createElement('strong');
+        const body = document.createElement('span');
+        const actions = document.createElement('div');
+
+        title.textContent = memo.title;
+        body.textContent = memo.body;
+        actions.className = 'memo-actions';
+
+        const edit = document.createElement('button');
+        edit.textContent = '수정';
+        edit.addEventListener('click', () => {
+          memoIdInput.value = memo.id;
+          memoTitleInput.value = memo.title;
+          memoBodyInput.value = memo.body;
+          memoSubmit.textContent = '메모 수정';
+          memoCancel.hidden = false;
+          memoTitleInput.focus();
+        });
+
+        const remove = document.createElement('button');
+        remove.textContent = '삭제';
+        remove.addEventListener('click', async () => {
+          if (!confirm('이 메모를 삭제할까요?')) return;
+
+          const response = await fetch('/api/memos/' + encodeURIComponent(memo.id), {
+            method: 'DELETE',
+            headers: { Authorization: 'Bearer ' + currentSession.access_token }
+          });
+
+          if (!response.ok) {
+            showMemoStatus('삭제 실패: ' + response.status, 'auth-error');
+            return;
+          }
+
+          showMemoStatus('메모를 삭제했습니다.', 'auth-success');
+          resetMemoForm();
+          await loadMemos();
+        });
+
+        actions.append(edit, remove);
+        item.append(title, body, actions);
+        memoList.append(item);
+      }
+    }
+
+    async function loadMemos() {
+      if (!currentSession?.access_token) {
+        memoPanel.hidden = true;
+        memoList.replaceChildren();
+        return;
+      }
+
+      memoPanel.hidden = false;
+
+      try {
+        const response = await fetch('/api/memos', {
+          cache: 'no-store',
+          headers: { Authorization: 'Bearer ' + currentSession.access_token }
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'MEMOS_FETCH_FAILED');
+        }
+
+        renderMemos(Array.isArray(data.memos) ? data.memos : []);
+      } catch (error) {
+        showMemoStatus('메모 불러오기 실패: ' + error.message, 'auth-error');
+      }
+    }
+
+    memoForm.addEventListener('submit', async event => {
+      event.preventDefault();
+
+      if (!currentSession?.access_token) return;
+
+      memoSubmit.disabled = true;
+
+      try {
+        const id = memoIdInput.value.trim();
+        const payload = {
+          title: memoTitleInput.value.trim(),
+          body: memoBodyInput.value
+        };
+
+        let response;
+
+        if (id) {
+          response = await fetch('/api/memos/' + encodeURIComponent(id), {
+            method: 'PUT',
+            headers: memoHeaders(),
+            body: JSON.stringify(payload)
+          });
+        } else {
+          response = await fetch('/api/memos', {
+            method: 'POST',
+            headers: memoHeaders(),
+            body: JSON.stringify(payload)
+          });
+        }
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(data.error || 'MEMO_SAVE_FAILED');
+        }
+
+        showMemoStatus(id ? '메모를 수정했습니다.' : '메모를 추가했습니다.', 'auth-success');
+        resetMemoForm();
+        await loadMemos();
+      } catch (error) {
+        showMemoStatus('저장 실패: ' + error.message, 'auth-error');
+      } finally {
+        memoSubmit.disabled = false;
+      }
+    });
+
+    memoCancel.addEventListener('click', () => {
+      resetMemoForm();
+      showMemoStatus('');
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      currentSession = session;
+
+      if (session?.user) {
+        showLoggedIn(session.user.email);
+        loadNotes(session);
+        loadMemos();
+      } else {
+        showLoggedOut();
+        list.replaceChildren();
+        resetMemoForm();
+        memoPanel.hidden = true;
+        memoList.replaceChildren();
+      }
+    });
+
     async function loadNotes(session) {
       if (!session?.access_token) {
         list.replaceChildren();
@@ -282,38 +464,32 @@
       try {
         const response = await fetch('/api/notes', {
           cache: 'no-store',
-          headers: { Authorization: 'Bearer ' + session.access_token },
+          headers: { Authorization: 'Bearer ' + session.access_token }
         });
-
         const body = await response.json();
+
         if (!response.ok) {
-          throw new Error(`자료 API 오류 (${response.status}): ${body.error || 'UNKNOWN_ERROR'}${body.debug ? ' / ' + body.debug : ''}`);
+          throw new Error(body.error || 'NOTES_FETCH_FAILED');
         }
 
-        const data = body;
-
-        if (!Array.isArray(data.notes)) {
+        if (!Array.isArray(body.notes)) {
           throw new Error('자료 형식이 맞지 않습니다.');
         }
 
         list.replaceChildren(
-          ...data.notes.map(note => {
+          ...body.notes.map(note => {
             const item = document.createElement('li');
-
             const title = document.createElement('strong');
             const content = document.createElement('span');
-
             title.textContent = note.title;
             content.textContent = note.content;
-
             item.append(title, content);
-
             return item;
           })
         );
       } catch (error) {
         const item = document.createElement('li');
-        item.textContent = error.message;
+        item.textContent = '자료를 불러오지 못했습니다.';
         list.replaceChildren(item);
       }
     }
