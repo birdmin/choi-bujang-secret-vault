@@ -72,3 +72,29 @@ GitHub에서는 최신 `main` 브랜치의 파일을 검색하고, 공개 배포
 - RLS 적용 후에도 API의 소유권 검사 유지
 
 저장점에서 다시 제출 묶음을 만들 때는 `npm run bundle`을 실행합니다. 이 명령은 커밋되지 않은 파일을 거부하고 현재 HEAD의 커밋·변경 파일·허용 경로·공격 점검 결과를 `artifacts/submission.json`으로 생성합니다. `bundle-notes.json`과 `artifacts/submission.json`은 저장소에 커밋하지 않습니다.
+
+
+## 5단계 저장점: 자료 요청을 서버 한곳으로 모읍니다
+
+5단계에서는 브라우저의 메모 자료 읽기·추가·수정·삭제를 Vercel 서버 함수로만 처리하도록 유지하고, Supabase `public.memos`에 대한 `PUBLIC`·`anon`·`authenticated`의 직접 테이블 권한을 회수했습니다. 로그인(Auth) 호출은 기존 Supabase Auth 흐름을 보존하고, 서버 함수의 로그인 검증과 `owner_id` 소유권 검사는 유지합니다.
+
+현재 자료 API 경로:
+- GET `/api/memos`
+- POST `/api/memos`
+- GET `/api/memos/:id`
+- PUT `/api/memos/:id`
+- DELETE `/api/memos/:id`
+
+현재 `aleph.config.json`의 `originalApiUrl`은 쿼리 없는 원본 자료 HTTPS 경로이며, `allowedRoutes`에는 위 서버 함수 경로가 기록되어 있습니다. `vercel.json`에는 `X-Content-Type-Options: nosniff`가 적용되어 있습니다.
+
+학습 DB에서 확인한 `public.memos` 직접 권한:
+- 적용 전: `authenticated`의 SELECT·INSERT·UPDATE·DELETE 4개
+- 적용 후: `PUBLIC`·`anon`·`authenticated` 모두 직접 권한 없음
+- 다른 테이블은 변경하지 않음
+
+제출 전 직접 확인 항목:
+- 브라우저 메모 CRUD 요청이 서버 함수 경로만 사용하는지 확인
+- A 정상 동작, B 타인 메모 거부, 무로그인 거부 확인
+- 원본 자료 HTTPS 경로를 공개 키로 직접 요청했을 때 메모 자료가 노출되지 않는지 확인
+
+저장점에서 다시 제출 묶음을 만들 때는 `npm run bundle`을 실행합니다. 이 명령은 커밋되지 않은 파일을 거부하고 현재 HEAD의 커밋·변경 파일·허용 경로·직접 점검 결과를 `artifacts/submission.json`으로 생성합니다. `bundle-notes.json`과 `artifacts/submission.json`은 저장소에 커밋하지 않습니다.
