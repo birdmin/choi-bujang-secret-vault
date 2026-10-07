@@ -52,6 +52,7 @@ export default async function handler(request, response) {
 
   const client = db();
 
+  // Stage 4 savepoint: detail endpoints enforce ownership with the verified identity.
   if (request.method === 'GET') {
     const { data, error } = await client.from('memos')
       .select('id,title,body')
