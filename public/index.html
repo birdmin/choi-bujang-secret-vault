@@ -273,55 +273,67 @@
       showLoggedOut();
     });
 
+    async function loadNotes(session) {
+      if (!session?.access_token) {
+        list.replaceChildren();
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/notes', {
+          cache: 'no-store',
+          headers: { Authorization: 'Bearer ' + session.access_token },
+        });
+
+        if (!response.ok) {
+          throw new Error('서버 자료를 읽을 수 없습니다.');
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data.notes)) {
+          throw new Error('자료 형식이 맞지 않습니다.');
+        }
+
+        list.replaceChildren(
+          ...data.notes.map(note => {
+            const item = document.createElement('li');
+
+            const title = document.createElement('strong');
+            const content = document.createElement('span');
+
+            title.textContent = note.title;
+            content.textContent = note.content;
+
+            item.append(title, content);
+
+            return item;
+          })
+        );
+      } catch (error) {
+        const item = document.createElement('li');
+        item.textContent = error.message;
+        list.replaceChildren(item);
+      }
+    }
+
     supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         showLoggedIn(session.user.email);
+        loadNotes(session);
       } else {
         showLoggedOut();
+        list.replaceChildren();
       }
     });
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch('/api/notes', {
-        cache: 'no-store',
-        headers: session?.access_token
-          ? { Authorization: 'Bearer ' + session.access_token }
-          : {},
-      });
-
-      if (!response.ok) {
-        throw new Error('서버 자료를 읽을 수 없습니다.');
-      }
-
-      const data = await response.json();
-
-      if (!Array.isArray(data.notes)) {
-        throw new Error('자료 형식이 맞지 않습니다.');
-      }
-
-      list.replaceChildren(
-        ...data.notes.map(note => {
-          const item = document.createElement('li');
-
-          const title = document.createElement('strong');
-          const content = document.createElement('span');
-
-          title.textContent = note.title;
-          content.textContent = note.content;
-
-          item.append(title, content);
-
-          return item;
-        })
-      );
-
-    } catch (error) {
-      const item = document.createElement('li');
-
-      item.textContent = error.message;
-
-      list.replaceChildren(item);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      showLoggedIn(session.user.email);
+      await loadNotes(session);
+    } else {
+      showLoggedOut();
+      list.replaceChildren();
     }
   </script>
 
