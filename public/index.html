@@ -182,6 +182,21 @@
       <p id="auth-status" class="auth-status" aria-live="polite"></p>
     </section>
 
+    <section id="memo-panel" class="memo-panel" aria-labelledby="memo-title" hidden>
+      <h2 id="memo-title">내 가상 메모</h2>
+
+      <form id="memo-form" class="memo-form">
+        <input id="memo-id" type="hidden">
+        <input id="memo-title" type="text" placeholder="메모 제목" required>
+        <textarea id="memo-body" placeholder="메모 내용" required></textarea>
+        <button id="memo-submit" type="submit">메모 추가</button>
+        <button id="memo-cancel" type="button" hidden>수정 취소</button>
+      </form>
+
+      <p id="memo-status" class="auth-status" aria-live="polite"></p>
+      <ul id="memos" aria-live="polite"></ul>
+    </section>
+
     <div class="notice">
       현재 단계에서는 로그인 상태만 확인합니다.
       자료 API의 접근 제어는 다음 단계에서 추가합니다.
