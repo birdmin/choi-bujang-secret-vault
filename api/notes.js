@@ -10,12 +10,22 @@ async function getVerifier() {
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
+  const supabasePublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
 
   if (!supabaseUrl || !supabaseSecretKey) throw new Error('SERVER_CONFIG_ERROR');
 
   const root = resolve(import.meta.dirname, '..');
   const config = JSON.parse(await readFile(resolve(root, 'aleph.config.json'), 'utf8'));
-  verifyLogin = createLoginVerifier({ config, supabaseSecretKey });
+  const verifierClient = createClient(
+    supabaseUrl,
+    supabasePublishableKey || supabaseSecretKey,
+    { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } },
+  );
+  verifyLogin = createLoginVerifier({
+    config,
+    supabaseSecretKey,
+    supabaseClient: verifierClient,
+  });
   return verifyLogin;
 }
 
