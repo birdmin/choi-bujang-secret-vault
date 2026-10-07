@@ -27,64 +27,58 @@ export async function runAttackChecks(config) {
     throw new Error('가상 메모의 확인 표시를 넣어 주세요.');
   }
 
-  if (config.step < 2) {
-    throw new Error('2단계 이후의 공격 점검은 2단계 저장점에서 실행해야 합니다.');
+  if (config.step < 4) {
+    throw new Error('4단계 저장점에서 메모 소유권 점검을 실행해야 합니다.');
   }
 
   const results = [];
 
-  const dataResponse = await fetch(new URL('/data.json', app), {
+  const memoResponse = await fetch(new URL('/api/memos', app), {
     redirect: 'error',
     signal: AbortSignal.timeout(10000),
   });
 
-  let notes = null;
-
-  if (dataResponse.ok) {
-    try {
-      const data = await dataResponse.json();
-      notes = data?.notes;
-    } catch {
-      notes = null;
-    }
+  let memoJson = null;
+  try {
+    memoJson = await memoResponse.json();
+  } catch {
+    memoJson = null;
   }
 
-  const staticNotesEmpty =
-    Array.isArray(notes) && notes.length === 0;
-
   results.push({
-    attackId: 'anonymous_static_note_read',
-    expected: '비로그인 정적 파일에서 가상 메모가 보이지 않음',
-    observed: staticNotesEmpty
-      ? '비로그인 /data.json에서 메모 0건 확인'
-      : `비로그인 /data.json에서 메모가 제거되지 않음 (HTTP ${dataResponse.status})`,
+    attackId: 'anonymous_memo_list_read',
+    expected: '비로그인 메모 목록 요청은 JSON 401/403으로 차단됨',
+    observed: memoResponse.status === 401 || memoResponse.status === 403
+      ? '비로그인 /api/memos가 JSON 오류로 차단됨 (HTTP ' + memoResponse.status + ')'
+      : '비로그인 /api/memos가 예상 상태가 아님 (HTTP ' + memoResponse.status + ', JSON ' + (memoJson !== null ? '확인' : '없음') + ')',
   });
 
-  const apiResponse = await fetch(new URL('/api/notes', app), {
+  const alephResponse = await fetch(new URL('/aleph.json', app), {
     redirect: 'error',
     signal: AbortSignal.timeout(10000),
   });
 
-  let apiNotes = null;
+  results.push({
+    attackId: 'anonymous_runtime_config_read',
+    expected: '빌드 시 생성된 /aleph.json이 배포되어 있음',
+    observed: alephResponse.ok
+      ? '배포된 /aleph.json 확인 (HTTP ' + alephResponse.status + ')'
+      : '배포된 /aleph.json을 확인하지 못함 (HTTP ' + alephResponse.status + ')',
+  });
 
-  if (apiResponse.ok) {
-    try {
-      const data = await apiResponse.json();
-      apiNotes = data?.notes;
-    } catch {
-      apiNotes = null;
-    }
-  }
+  const indexResponse = await fetch(new URL('/', app), {
+    redirect: 'error',
+    signal: AbortSignal.timeout(10000),
+  });
 
-  const apiPublic =
-    Array.isArray(apiNotes) && apiNotes.length > 0;
+  const nosniff = indexResponse.headers.get('x-content-type-options');
 
   results.push({
-    attackId: 'anonymous_api_note_read',
-    expected: '2단계에서는 공개 API의 접근 제어가 아직 없음을 확인',
-    observed: apiPublic
-      ? '비로그인 /api/notes에서 서버 측 가상 메모가 반환됨'
-      : `비로그인 /api/notes에서 가상 메모가 반환되지 않음 (HTTP ${apiResponse.status})`,
+    attackId: 'response_header_nosniff',
+    expected: '첫 화면 응답에 X-Content-Type-Options: nosniff가 적용됨',
+    observed: nosniff?.toLowerCase() === 'nosniff'
+      ? '첫 화면 응답에서 X-Content-Type-Options: nosniff 확인'
+      : '첫 화면 응답의 X-Content-Type-Options가 예상값이 아님 (' + (nosniff ?? '없음') + ')',
   });
 
   return results;

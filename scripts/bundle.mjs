@@ -43,7 +43,10 @@ try {
   if (normalizedRepo(config.repoUrl) !== repoUrl) {
     fail('aleph.config.json의 repoUrl이 Git origin 주소와 다릅니다. 같은 저장소 주소로 맞춰 주세요.');
   }
-  const notes = JSON.parse(readFileSync(join(root, 'bundle-notes.json'), 'utf8'));
+  const notesPath = process.env.BUNDLE_NOTES_PATH
+    ? resolve(process.env.BUNDLE_NOTES_PATH)
+    : join(root, 'bundle-notes.json');
+  const notes = JSON.parse(readFileSync(notesPath, 'utf8'));
   if (!Number.isInteger(config.step) || config.step < 1 || config.step > 12) fail('aleph.config.json의 step을 확인해 주세요.');
   if (config.step >= 3 && (!config.identityProvider || typeof config.identityProvider !== 'object'
       || ['issuer', 'audience', 'jwksUrl'].some((key) => typeof config.identityProvider[key] !== 'string'
