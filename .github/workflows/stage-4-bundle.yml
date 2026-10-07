@@ -4,7 +4,7 @@ on:
 permissions:
   contents: read
 env:
-  STAGE_4_CHECKPOINT: d9df8833af942be52183f49373bb1e19f1ca4cb3
+  STAGE_4_CHECKPOINT: f3749feb883cfd2c96f2a2d1325e8ff7677bbaf5
 jobs:
   bundle:
     runs-on: ubuntu-latest
