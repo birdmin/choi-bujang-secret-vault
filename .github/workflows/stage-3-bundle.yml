@@ -1,0 +1,34 @@
+name: Stage 3 bundle
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --package-lock=false
+
+      - name: Run submission bundle
+        run: npm run bundle
+
+      - name: Upload submission bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-3-submission
+          path: artifacts/submission.json
+          if-no-files-found: error
