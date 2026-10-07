@@ -56,6 +56,7 @@ export default async function handler(request, response) {
     const { data, error } = await client.from('memos')
       .select('id,title,body')
       .eq('id', id)
+      .eq('owner_id', identity.userId)
       .maybeSingle();
 
     if (error) {
