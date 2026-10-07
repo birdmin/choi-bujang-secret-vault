@@ -80,9 +80,33 @@ export default async function handler(request, response) {
       return;
     }
 
-    const { data, error } = await client.from('memos')
-      .update({ title, body, updated_at: new Date().toISOString() })
+    const { data: existing, error: fetchError } = await client.from('memos')
+      .select('id,owner_id')
       .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError) {
+      response.status(500).json({ error: 'MEMO_FETCH_FAILED' });
+      return;
+    }
+    if (!existing) {
+      response.status(404).json({ error: 'MEMO_NOT_FOUND' });
+      return;
+    }
+    if (existing.owner_id !== identity.userId) {
+      response.status(403).json({ error: 'MEMO_FORBIDDEN' });
+      return;
+    }
+
+    const { data, error } = await client.from('memos')
+      .update({
+        title,
+        body,
+        owner_id: identity.userId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('owner_id', identity.userId)
       .select('id,title,body')
       .maybeSingle();
 
@@ -91,7 +115,7 @@ export default async function handler(request, response) {
       return;
     }
     if (!data) {
-      response.status(404).json({ error: 'MEMO_NOT_FOUND' });
+      response.status(403).json({ error: 'MEMO_FORBIDDEN' });
       return;
     }
 
@@ -100,9 +124,28 @@ export default async function handler(request, response) {
   }
 
   if (request.method === 'DELETE') {
+    const { data: existing, error: fetchError } = await client.from('memos')
+      .select('id,owner_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError) {
+      response.status(500).json({ error: 'MEMO_FETCH_FAILED' });
+      return;
+    }
+    if (!existing) {
+      response.status(404).json({ error: 'MEMO_NOT_FOUND' });
+      return;
+    }
+    if (existing.owner_id !== identity.userId) {
+      response.status(403).json({ error: 'MEMO_FORBIDDEN' });
+      return;
+    }
+
     const { data, error } = await client.from('memos')
       .delete()
       .eq('id', id)
+      .eq('owner_id', identity.userId)
       .select('id')
       .maybeSingle();
 
@@ -111,7 +154,7 @@ export default async function handler(request, response) {
       return;
     }
     if (!data) {
-      response.status(404).json({ error: 'MEMO_NOT_FOUND' });
+      response.status(403).json({ error: 'MEMO_FORBIDDEN' });
       return;
     }
 
