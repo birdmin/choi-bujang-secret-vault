@@ -282,8 +282,12 @@
     });
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/notes', {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: session?.access_token
+          ? { Authorization: 'Bearer ' + session.access_token }
+          : {},
       });
 
       if (!response.ok) {
