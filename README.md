@@ -52,3 +52,23 @@ GitHub에서는 최신 `main` 브랜치의 파일을 검색하고, 공개 배포
 따라서 2단계에서는 정적 파일에서 자료를 제거하고 서버 측으로 옮겼지만, API 자체의 접근 제어가 완료된 것은 아닙니다. 이 공개 API의 접근 제어는 다음 단계에서 다룹니다.
 
 또한 과거 GitHub 커밋과 과거 Vercel 배포에는 2단계 이전의 공개 자료가 남아 있을 수 있습니다. 따라서 과거 노출이 완전히 해소되었다고 간주하지 않습니다.
+
+## 4단계 저장점: 메모 소유권과 DB 권한 보호
+
+4단계에서는 로그인한 사용자의 검증된 ID를 메모의 소유자로 사용하고, 메모 읽기·추가·수정·삭제 API에서 `owner_id` 소유권을 확인하도록 했습니다. 메모 추가 시 요청 본문의 소유자 ID를 믿지 않고 서버에서 검증한 사용자 ID를 저장하며, 수정·삭제에서는 기존 행과 요청 대상 행의 소유자가 모두 본인인지 확인합니다.
+
+학습 DB의 `public.memos`에는 RLS를 켜고 `public`, `anon`, `authenticated`의 기존 테이블 권한을 회수한 뒤 `authenticated`에 SELECT·INSERT·UPDATE·DELETE만 부여했습니다. SELECT·DELETE는 기존 행의 `auth.uid() = owner_id`, INSERT는 새 행의 `auth.uid() = owner_id`, UPDATE는 기존 행과 새 행 모두의 `auth.uid() = owner_id`를 정책으로 검사합니다.
+
+현재 자료 API 경로:
+- GET `/api/memos`
+- POST `/api/memos`
+- GET `/api/memos/:id`
+- PUT `/api/memos/:id`
+- DELETE `/api/memos/:id`
+
+현재 확인된 직접 점검:
+- B의 자기 메모 목록 조회: 정상
+- B의 A 메모 상세 조회: `404 MEMO_NOT_FOUND`로 거부
+- RLS 적용 후에도 API의 소유권 검사 유지
+
+저장점에서 다시 제출 묶음을 만들 때는 `npm run bundle`을 실행합니다. 이 명령은 커밋되지 않은 파일을 거부하고 현재 HEAD의 커밋·변경 파일·허용 경로·공격 점검 결과를 `artifacts/submission.json`으로 생성합니다. `bundle-notes.json`과 `artifacts/submission.json`은 저장소에 커밋하지 않습니다.
