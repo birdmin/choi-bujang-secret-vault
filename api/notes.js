@@ -1,27 +1,20 @@
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../src/verify-login.mjs';
 
 let verifyLogin;
 
-function getVerifier() {
+async function getVerifier() {
   if (verifyLogin) return verifyLogin;
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 
-  if (!supabaseUrl || !supabaseSecretKey) {
-    throw new Error('SERVER_CONFIG_ERROR');
-  }
+  if (!supabaseUrl || !supabaseSecretKey) throw new Error('SERVER_CONFIG_ERROR');
 
-  const config = {
-    judgeIssuer: 'https://aleph-judge-production.up.railway.app/defense/judge',
-    publicAppUrl: 'https://choi-bujang-secret-vault-ten-coral.vercel.app/',
-    identityProvider: {
-      issuer: 'https://vkvajtqxmznshbwgoxiy.supabase.co/auth/v1',
-      jwksUrl: 'https://vkvajtqxmznshbwgoxiy.supabase.co/auth/v1/.well-known/jwks.json',
-      audience: 'authenticated',
-    },
-  };
-
+  const root = resolve(import.meta.dirname, '..');
+  const config = JSON.parse(await readFile(resolve(root, 'aleph.config.json'), 'utf8'));
   verifyLogin = createLoginVerifier({ config, supabaseSecretKey });
   return verifyLogin;
 }
@@ -29,7 +22,7 @@ function getVerifier() {
 export default async function handler(request, response) {
   let identity;
   try {
-    identity = await getVerifier()(request.headers.authorization);
+    identity = await (await getVerifier())(request.headers.authorization);
   } catch {
     response.status(500).json({ error: 'SERVER_CONFIG_ERROR' });
     return;
@@ -42,11 +35,7 @@ export default async function handler(request, response) {
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
-  const supabase = (await import('@supabase/supabase-js')).createClient(
-    supabaseUrl,
-    supabaseSecretKey,
-  );
-
+  const supabase = createClient(supabaseUrl, supabaseSecretKey);
   const { data, error } = await supabase
     .from('notes')
     .select('title, content')
