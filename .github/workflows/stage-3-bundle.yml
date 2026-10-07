@@ -6,13 +6,17 @@ on:
 permissions:
   contents: read
 
+env:
+  STAGE_3_CHECKPOINT: 53fbde29afc4868b6bfb3c364110c30a30045f8a
+
 jobs:
   bundle:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout stage 3 checkpoint
         uses: actions/checkout@v4
         with:
+          ref: ${{ env.STAGE_3_CHECKPOINT }}
           fetch-depth: 0
 
       - name: Set up Node.js
@@ -25,6 +29,9 @@ jobs:
 
       - name: Run submission bundle
         run: npm run bundle
+
+      - name: Show submission JSON
+        run: cat artifacts/submission.json
 
       - name: Upload submission bundle
         uses: actions/upload-artifact@v4
