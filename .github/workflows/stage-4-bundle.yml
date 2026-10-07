@@ -1,0 +1,32 @@
+name: Stage 4 bundle
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  STAGE_4_CHECKPOINT: d9df8833af942be52183f49373bb1e19f1ca4cb3
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout stage 4 checkpoint
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.STAGE_4_CHECKPOINT }}
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --package-lock=false
+      - name: Run submission bundle
+        run: npm run bundle
+      - name: Show submission JSON
+        run: cat artifacts/submission.json
+      - name: Upload submission bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-4-submission
+          path: artifacts/submission.json
+          if-no-files-found: error
