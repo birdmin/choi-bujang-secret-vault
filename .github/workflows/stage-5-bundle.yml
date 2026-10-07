@@ -1,0 +1,44 @@
+name: Stage 5 Bundle
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --package-lock=false
+
+      - name: Prepare stage 5 bundle notes
+        run: |
+          cat > /tmp/stage-5-bundle-notes.json <<'JSON'
+          {
+            "explanation": "5단계에서는 브라우저의 메모 자료 읽기·추가·수정·삭제를 Vercel 서버 함수로만 처리하도록 유지하고, public.memos에 대한 PUBLIC·anon·authenticated의 직접 테이블 권한을 회수했습니다. 서버의 로그인 검증과 owner_id 소유권 검사는 유지하며, 원본 자료 API의 HTTPS 경로를 aleph.config.json에 기록했습니다.",
+            "blockedAt": null
+          }
+          JSON
+          echo "BUNDLE_NOTES_PATH=/tmp/stage-5-bundle-notes.json" >> "$GITHUB_ENV"
+
+      - name: Run bundle
+        run: npm run bundle
+
+      - name: Upload submission
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-5-submission
+          path: artifacts/submission.json
+          if-no-files-found: error
