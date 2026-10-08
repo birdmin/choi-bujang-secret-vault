@@ -58,12 +58,32 @@ export async function runAttackChecks(config) {
     signal: AbortSignal.timeout(10000),
   });
 
+  let alephJson = null;
+  try {
+    alephJson = await alephResponse.json();
+  } catch {
+    alephJson = null;
+  }
+
+  const deployedAllowedRoutes = Array.isArray(alephJson?.allowedRoutes)
+    ? alephJson.allowedRoutes
+    : [];
+  const deployedOriginalApiUrl = typeof alephJson?.originalApiUrl === 'string'
+    ? alephJson.originalApiUrl
+    : '';
+
+  const deploymentIdentityComplete =
+    alephResponse.ok &&
+    deployedAllowedRoutes.length === config.allowedRoutes.length &&
+    config.allowedRoutes.every((route) => deployedAllowedRoutes.includes(route)) &&
+    deployedOriginalApiUrl === config.originalApiUrl;
+
   results.push({
     attackId: 'anonymous_runtime_config_read',
-    expected: '빌드 시 생성된 /aleph.json이 배포되어 있음',
-    observed: alephResponse.ok
-      ? '배포된 /aleph.json 확인 (HTTP ' + alephResponse.status + ')'
-      : '배포된 /aleph.json을 확인하지 못함 (HTTP ' + alephResponse.status + ')',
+    expected: '배포된 /aleph.json에 allowedRoutes와 원본 HTTPS API 경로가 포함되어 있어야 함',
+    observed: deploymentIdentityComplete
+      ? '배포된 /aleph.json에서 allowedRoutes와 originalApiUrl 확인 (HTTP ' + alephResponse.status + ')'
+      : '배포된 /aleph.json의 배포 식별 정보가 설정과 일치하지 않음 (HTTP ' + alephResponse.status + ')',
   });
 
   const indexResponse = await fetch(new URL('/', app), {
