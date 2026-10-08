@@ -71,6 +71,19 @@ export async function runAttackChecks(config) {
     signal: AbortSignal.timeout(10000),
   });
 
+  const indexHtml = await indexResponse.text();
+
+  const publicSupabaseKeyPattern = /(?:sb_publishable_[A-Za-z0-9._-]+|(?:anon|anonymous)[^\n]{0,80}eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)/i;
+  const hasPublicSupabaseKey = publicSupabaseKeyPattern.test(indexHtml);
+
+  results.push({
+    attackId: 'browser_supabase_public_key_exposure',
+    expected: '첫 화면 코드에 Supabase 공개 키(sb_publishable_ 또는 anon 키)가 없어야 함',
+    observed: hasPublicSupabaseKey
+      ? '첫 화면 코드에서 Supabase 공개 키 패턴이 발견됨'
+      : '첫 화면 코드에서 Supabase 공개 키 패턴을 찾지 못함',
+  });
+
   const nosniff = indexResponse.headers.get('x-content-type-options');
 
   results.push({
