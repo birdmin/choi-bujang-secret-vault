@@ -84,6 +84,37 @@ export async function runAttackChecks(config) {
       : '첫 화면 코드에서 Supabase 공개 키 패턴을 찾지 못함',
   });
 
+  let originalApi;
+
+  try {
+    originalApi = new URL(config.originalApiUrl);
+  } catch {
+    throw new Error('aleph.config.json의 원본 API HTTPS 경로를 확인해 주세요.');
+  }
+
+  if (
+    originalApi.protocol !== 'https:' ||
+    originalApi.username ||
+    originalApi.password ||
+    originalApi.search ||
+    originalApi.hash
+  ) {
+    throw new Error('원본 API 주소에는 HTTPS 경로만 기록해야 합니다.');
+  }
+
+  const originalApiResponse = await fetch(originalApi, {
+    redirect: 'error',
+    signal: AbortSignal.timeout(10000),
+  });
+
+  results.push({
+    attackId: 'original_api_direct_read',
+    expected: '원본 자료 API를 공개 키 없이 직접 요청해도 자료가 노출되지 않아야 함',
+    observed: originalApiResponse.status === 401 || originalApiResponse.status === 403
+      ? '원본 자료 API 직접 요청이 인증 오류로 차단됨 (HTTP ' + originalApiResponse.status + ')'
+      : '원본 자료 API 직접 요청이 예상 상태가 아님 (HTTP ' + originalApiResponse.status + ')',
+  });
+
   const nosniff = indexResponse.headers.get('x-content-type-options');
 
   results.push({
