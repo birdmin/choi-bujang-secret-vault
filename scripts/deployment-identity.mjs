@@ -8,6 +8,7 @@ export function deploymentIdentity(env, config) {
   const repo = env.VERCEL_GIT_REPO_SLUG;
   const commit = env.VERCEL_GIT_COMMIT_SHA;
   const host = env.VERCEL_URL;
+  const allowedRoutes = config.allowedRoutes;
   let originalApiUrl;
 
   try {
@@ -24,6 +25,10 @@ export function deploymentIdentity(env, config) {
       || !/^https:\/\/[a-z0-9-]+\.up\.railway\.app\/defense\/judge$/iu.test(config.judgeIssuer)
       || typeof config.sampleMarker !== 'string'
       || !/^[A-Z0-9_]{1,80}$/u.test(config.sampleMarker)
+      || !Array.isArray(allowedRoutes)
+      || allowedRoutes.length === 0
+      || allowedRoutes.length > 20
+      || allowedRoutes.some((route) => typeof route !== 'string' || !/^(GET|POST|PUT|PATCH|DELETE) \/api\/[A-Za-z0-9_:/.-]+$/u.test(route))
       || originalApiUrl.protocol !== 'https:'
       || originalApiUrl.search
       || originalApiUrl.hash) {
@@ -38,6 +43,7 @@ export function deploymentIdentity(env, config) {
     publicAppUrl: `https://${host.toLowerCase()}`,
     judgeIssuer: config.judgeIssuer,
     sampleMarker: config.sampleMarker,
+    allowedRoutes: [...allowedRoutes],
     originalApiUrl: originalApiUrl.href,
   };
 }
