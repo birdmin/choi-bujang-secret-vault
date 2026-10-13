@@ -90,7 +90,7 @@ function hasRecentVerifiedStepUp(stepUp) {
     && stepUp.verified === true
     && Number.isInteger(stepUp.authAgeSeconds)
     && stepUp.authAgeSeconds >= 0
-    && stepUp.authAgeSeconds <= 900
+    && stepUp.authAgeSeconds <= 300
   );
 }
 
