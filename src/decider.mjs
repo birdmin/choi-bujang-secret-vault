@@ -56,7 +56,10 @@ function hasCompositeRisk(request, hasFixtureSignals) {
     return false;
   }
 
-  const { hour, network } = request.signals;
+  const { hour, network, region } = request.signals;
+
+  // 기준 지역(local)과 다른 지역 신호
+  const unfamiliarRegion = region !== 'local';
 
   // 평소와 다른 시각
   const unusualHour = hour < 6 || hour >= 23;
@@ -77,8 +80,8 @@ function hasCompositeRisk(request, hasFixtureSignals) {
       && event.count >= 10
     );
 
-  // 세 조건이 모두 맞을 때만 복합 이상 접속으로 판정합니다.
-  return unusualHour && unfamiliarNetwork && bulkReading;
+  // 네 조건이 모두 맞을 때만 복합 이상 접속으로 판정합니다.
+  return unfamiliarRegion && unusualHour && unfamiliarNetwork && bulkReading;
 }
 
 function hasRecentVerifiedStepUp(stepUp) {
