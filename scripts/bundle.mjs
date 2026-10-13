@@ -90,6 +90,31 @@ try {
   if (new Set(attackAttempts.map(item => item.attackId)).size !== attackAttempts.length) {
     fail('공격 점검 ID가 중복되었습니다.');
   }
+
+  // A generated bundle is not evidence of a passing defense unless each
+  // observed result matches its expected security outcome.
+  const failedChecks = attackAttempts.filter((attempt) => {
+    const observed = attempt.observed;
+    if (attempt.attackId === 'anonymous_memo_list_read') {
+      return !/비로그인 \/api\/memos가 JSON 오류로 차단됨 \(HTTP (401|403)\)/u.test(observed);
+    }
+    if (attempt.attackId === 'anonymous_runtime_config_read') {
+      return !/배포된 \/aleph\.json에서 allowedRoutes와 originalApiUrl 확인 \(HTTP 2\d\d\)/u.test(observed);
+    }
+    if (attempt.attackId === 'browser_supabase_public_key_exposure') {
+      return !/첫 화면 코드에서 Supabase 공개 키 패턴을 찾지 못함/u.test(observed);
+    }
+    if (attempt.attackId === 'original_api_direct_read') {
+      return !/원본 자료 API 직접 요청이 인증 오류로 차단됨 \(HTTP (401|403)\)/u.test(observed);
+    }
+    if (attempt.attackId === 'response_header_nosniff') {
+      return !/첫 화면 응답에서 X-Content-Type-Options: nosniff 확인/u.test(observed);
+    }
+    return false;
+  });
+  if (failedChecks.length) {
+    fail(`보안 점검이 통과하지 못했습니다. 제출 묶음을 만들지 않습니다: ${failedChecks.map(item => item.attackId).join(', ')}`);
+  }
   const bundle = {
     schema: 'aleph.defense.submission.v2', step: config.step, commit, repoUrl,
     changedFiles, policyRules,
