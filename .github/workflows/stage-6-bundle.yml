@@ -1,0 +1,44 @@
+name: Stage 6 submission bundle
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install project dependencies
+        run: npm ci
+      - name: Prepare stage 6 bundle notes (temporary, not committed)
+        run: |
+          cat > bundle-notes.json <<'EOF'
+          {
+            "explanation": "6단계에서는 판정기에 등록 기기 조건을 적용했습니다. deviceRegistered가 true인 요청만 허용하고, 그 외 요청은 device_not_registered로 거부합니다. GitHub Actions의 가상 시험에서 등록 기기 정상 요청과 미등록 기기 거부를 확인했습니다. 이 연습 결과는 실제 심판 판정이 아닙니다.",
+            "blockedAt": null
+          }
+          EOF
+      - name: Run submission bundle
+        run: npm run bundle
+      - name: Show submission JSON and summary
+        if: success()
+        run: |
+          cat artifacts/submission.json
+          echo ""
+          echo "=== 제출 요약 ==="
+          node -e "const b=require('./artifacts/submission.json'); console.log(JSON.stringify({step:b.step,commit:b.commit,repoUrl:b.repoUrl,changedFiles:b.changedFiles,policyRules:b.policyRules,attackAttempts:b.attackAttempts,explanation:b.explanation,blockedAt:b.blockedAt},null,2))"
+      - name: Upload submission JSON
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-6-submission
+          path: artifacts/submission.json
