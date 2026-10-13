@@ -100,19 +100,18 @@ export function detect(events) {
       // 회수 대상 기기 ID가 실제 입력에 없으면 제안하지 않습니다.
       if (!unusualNetworkRead.deviceId) continue;
 
-      // 복합 의심 회수 제안은 해당 창의 모든 조회가 동일한 확인 기기에서
-      // 발생한 경우에만 허용합니다. 한 기기라도 다르거나 식별자가 없으면 관찰만 합니다.
+      // 회수 제안 대상은 비정상 네트워크 사건에서 확인된 가상 기기 한 개입니다.
+      // 같은 주체의 다른 조회에 기기 ID가 없거나 다르다는 이유로 탐지를 취소하지 않습니다.
       const confirmedDeviceId = unusualNetworkRead.deviceId;
-      const singleConfirmedDevice = windowReads.every(
-        (event) => event.deviceId === confirmedDeviceId,
-      );
-      if (!singleConfirmedDevice) continue;
-
       return {
         action: 'propose_revocation',
         reasonCode: 'compound_network_burst',
         subject,
         deviceId: confirmedDeviceId,
+        propose_revocation: {
+          targetDeviceId: confirmedDeviceId,
+          reasonCode: 'composite_anomaly',
+        },
       };
     }
   }
