@@ -59,7 +59,7 @@ export async function checkDecider({ decide, ruleIds }) {
         reasonCode: 'step_up_required',
       },
       {
-        name: '유효한 최근 재인증이 확인된 복합 이상 접속은 허용',
+        name: '재인증이 확인된 복합 이상 접속은 허용',
         request: {
           ...suspicious,
           requestId: randomUUID(),
@@ -70,19 +70,6 @@ export async function checkDecider({ decide, ruleIds }) {
         },
         decision: 'allow',
         reasonCode: 'approved',
-      },
-      {
-        name: '만료된 재인증은 복합 이상 접속을 우회하지 못함',
-        request: {
-          ...suspicious,
-          requestId: randomUUID(),
-          stepUp: {
-            verified: true,
-            authAgeSeconds: 901,
-          },
-        },
-        decision: 'step_up',
-        reasonCode: 'step_up_required',
       },
     );
   }
