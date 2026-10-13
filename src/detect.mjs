@@ -1,4 +1,4 @@
-const CONFIRMED_VIRTUAL_DEVICE_ID = 'aaaaaaaaaaaaaaaa';
+  const CONFIRMED_VIRTUAL_DEVICE_ID = 'aaaaaaaaaaaaaaaa';
 
 function normalizeEvents(events) {
   if (!Array.isArray(events)) throw new TypeError('invalid_detection_events');
@@ -37,12 +37,13 @@ function findCompositeSuspicion(events) {
     });
 
     if (window.length > 120 && window.some((event) => event.network === 'unusual')) {
-      return {
-        action: 'propose_revocation',
-        targetDeviceId: CONFIRMED_VIRTUAL_DEVICE_ID,
-        reasonCode: 'burst_read',
-      };
-    }
+  return {
+    propose_revocation: {
+      targetDeviceId: CONFIRMED_VIRTUAL_DEVICE_ID,
+      reasonCode: 'burst_read',
+      },
+    };
+  }
   }
   return null;
 }
