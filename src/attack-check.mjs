@@ -33,7 +33,7 @@ export async function runAttackChecks(config) {
 
   const results = [];
 
-  const memoResponse = await fetch(new URL('/api/memos', app), {
+  const memoResponse = await fetch(new URL('/api/notes', app), {
     redirect: 'error',
     signal: AbortSignal.timeout(10000),
   });
@@ -49,8 +49,8 @@ export async function runAttackChecks(config) {
     attackId: 'anonymous_memo_list_read',
     expected: '비로그인 메모 목록 요청은 JSON 401/403으로 차단됨',
     observed: memoResponse.status === 401 || memoResponse.status === 403
-      ? '비로그인 /api/memos가 JSON 오류로 차단됨 (HTTP ' + memoResponse.status + ')'
-      : '비로그인 /api/memos가 예상 상태가 아님 (HTTP ' + memoResponse.status + ', JSON ' + (memoJson !== null ? '확인' : '없음') + ')',
+      ? '비로그인 /api/notes가 JSON 오류로 차단됨 (HTTP ' + memoResponse.status + ')'
+      : '비로그인 /api/notes가 예상 상태가 아님 (HTTP ' + memoResponse.status + ', JSON ' + (memoJson !== null ? '확인' : '없음') + ')',
   });
 
   const alephResponse = await fetch(new URL('/aleph.json', app), {
