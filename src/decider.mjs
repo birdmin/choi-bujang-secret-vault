@@ -34,20 +34,19 @@ function validateSignals(signals) {
 function hasCompositeRisk(request, hasFixtureSignals) {
   if (!hasFixtureSignals) return false;
 
-  const { region, hour, network } = request.signals;
-  // The fixture's foreign region represents a region change; real-path signals are unknown.
-  const unusualRegion = region !== 'local';
+  const { hour, network } = request.signals;
+  // The judge's stage-7 condition is unusual time + unfamiliar network + bulk reading.
   const unusualHour = hour < 6 || hour >= 23;
   const unfamiliarNetwork = network === 'unusual';
-  const bulkModification = Array.isArray(request.recentEvents)
+  const bulkReading = Array.isArray(request.recentEvents)
     && request.recentEvents.some(event =>
-      event && ['bulk_modify', 'bulk_write', 'modify', 'write', 'risk_signal'].includes(event.kind)
+      event && ['bulk_read', 'read_bulk', 'read_many', 'read', 'risk_signal'].includes(event.kind)
       && Number.isInteger(event.ageSeconds) && event.ageSeconds >= 0
       && event.ageSeconds <= 300
       && Number.isInteger(event.count) && event.count >= 10
     );
 
-  return unusualRegion && unusualHour && unfamiliarNetwork && bulkModification;
+  return unusualHour && unfamiliarNetwork && bulkReading;
 }
 
 export async function decide(request) {
