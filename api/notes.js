@@ -1,6 +1,5 @@
 import config from '../aleph.config.json' with { type: 'json' };
 import { RESOURCE_IDS, markResource } from '../src/resource-ids.mjs';
-import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../src/verify-login.mjs';
 
 let verifyLogin;
@@ -11,97 +10,46 @@ async function getVerifier() {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 
-  if (!supabaseUrl) {
-    throw new Error('MISSING_SUPABASE_URL');
+  if (!supabaseUrl || !supabaseSecretKey) {
+    throw new Error('SERVER_CONFIG_INVALID');
   }
 
-  if (!supabaseSecretKey) {
-    throw new Error('MISSING_SUPABASE_SECRET_KEY');
-  }
-
-  try {
-    verifyLogin = createLoginVerifier({
-      config,
-      supabaseSecretKey,
-    });
-  } catch (error) {
-    throw new Error(
-      `VERIFIER_CREATE_FAILED:${error instanceof Error ? error.message : 'unknown'}`
-    );
-  }
-
+  verifyLogin = createLoginVerifier({ config, supabaseSecretKey });
   return verifyLogin;
 }
 
 export default async function handler(request, response) {
   markResource(response, RESOURCE_IDS.instructorNotices);
-  let verifier;
+  response.setHeader('Cache-Control', 'no-store');
 
-  try {
-    verifier = await getVerifier();
-  } catch (error) {
-    response.status(500).json({
-      error: 'SERVER_CONFIG_ERROR',
-      debug: error instanceof Error
-        ? error.message
-        : 'UNKNOWN_VERIFIER_ERROR',
-    });
+  if (request.method !== 'GET') {
+    response.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
     return;
   }
 
   let identity;
-
   try {
+    const verifier = await getVerifier();
     identity = await verifier(request.headers.authorization);
-  } catch (error) {
-    response.status(500).json({
-      error: 'LOGIN_VERIFICATION_ERROR',
-      debug: error instanceof Error
-        ? error.message
-        : 'UNKNOWN_LOGIN_VERIFICATION_ERROR',
-    });
+  } catch {
+    response.status(500).json({ error: 'LOGIN_VERIFICATION_ERROR' });
     return;
   }
 
-  if (!identity || identity.kind !== 'student') {
-    response.status(401).json({
-      error: 'LOGIN_REQUIRED',
-      debug: 'verify_login_rejected_token',
-    });
+  if (!identity) {
+    response.status(401).json({ error: 'LOGIN_REQUIRED' });
     return;
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
-
-  const supabase = createClient(
-    supabaseUrl,
-    supabaseSecretKey,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false,
-      },
-    }
-  );
-
-  const { data, error } = await supabase
-    .from('notes')
-    .select('title, content')
-    .order('id', { ascending: true });
-
-  if (error) {
-    response.status(500).json({
-      error: 'NOTES_FETCH_FAILED',
-    });
+  // This endpoint is classified as instructor notices. The repository currently
+  // has no persisted instructor-role/permission source to authorize access.
+  // Fail closed instead of trusting a request-body role or exposing every note.
+  if (identity.kind !== 'instructor') {
+    response.status(403).json({ error: 'INSTRUCTOR_PERMISSION_REQUIRED' });
     return;
   }
 
-  response.setHeader('Cache-Control', 'no-store');
-
-  response.status(200).json({
-    resourceId: RESOURCE_IDS.instructorNotices,
-    notes: data,
-  });
+  // No instructor identity can currently be produced by verify-login.mjs.
+  // Keep this endpoint closed until server-verified instructor permissions exist.
+  response.status(403).json({ error: 'INSTRUCTOR_PERMISSION_REQUIRED' });
 }
