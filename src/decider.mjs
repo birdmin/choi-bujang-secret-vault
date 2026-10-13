@@ -44,6 +44,7 @@ function routeAllowed(request) {
 
   // 쿼리로 기능을 선택하지 못하게 하고, 경로의 모양과 서비스·메서드를 함께 확인합니다.
   if (request.path.includes('?') || request.path.includes('#')) return false;
+  if (request.queryLength !== 0) return false;
 
   const { memo, classNoticeCollection, classNoticeDetail, instructorMaterial } = ROUTE_POLICY;
 
