@@ -1,4 +1,5 @@
 import config from '../aleph.config.json' with { type: 'json' };
+import { RESOURCE_IDS, markResource } from '../src/resource-ids.mjs';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../src/verify-login.mjs';
 
@@ -33,6 +34,7 @@ async function getVerifier() {
 }
 
 export default async function handler(request, response) {
+  markResource(response, RESOURCE_IDS.instructorNotices);
   let verifier;
 
   try {
@@ -99,6 +101,7 @@ export default async function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store');
 
   response.status(200).json({
+    resourceId: RESOURCE_IDS.instructorNotices,
     notes: data,
   });
 }
