@@ -72,13 +72,26 @@ export async function checkDecider({ decide, ruleIds }) {
         reasonCode: 'approved',
       },
       {
-        name: '만료된 재인증은 복합 이상 접속을 우회하지 못함',
+        name: '재인증 300초는 유효',
         request: {
           ...suspicious,
           requestId: randomUUID(),
           stepUp: {
             verified: true,
-            authAgeSeconds: 901,
+            authAgeSeconds: 300,
+          },
+        },
+        decision: 'allow',
+        reasonCode: 'approved',
+      },
+      {
+        name: '재인증 301초는 만료되어 추가 확인',
+        request: {
+          ...suspicious,
+          requestId: randomUUID(),
+          stepUp: {
+            verified: true,
+            authAgeSeconds: 301,
           },
         },
         decision: 'step_up',
