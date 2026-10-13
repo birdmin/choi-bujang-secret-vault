@@ -125,10 +125,7 @@ function hasCompositeRisk(request, hasFixtureSignals) {
     return false;
   }
 
-  const { hour, network } = request.signals;
-
-  // 평소와 다른 시각
-  const unusualHour = hour < 6 || hour >= 23;
+  const { network } = request.signals;
 
   // 낯선 네트워크
   const unfamiliarNetwork = network === 'unusual';
@@ -145,9 +142,9 @@ function hasCompositeRisk(request, hasFixtureSignals) {
       && event.count >= 10
     );
 
-  // 세 위험 신호가 함께 있을 때 복합 이상 접속으로 판정합니다.
-  // 지역은 현재 계약상 신뢰 가능한 위치 증거가 아니므로 판정 조건에 넣지 않습니다.
-  return unusualHour && unfamiliarNetwork && bulkReading;
+  // 낯선 네트워크와 갑작스러운 다량 조회가 함께 있을 때만 복합 이상 접속으로 판정합니다.
+  // 지역 하나만으로는 확정하지 않으며, 지역은 판정 조건에 넣지 않습니다.
+  return unfamiliarNetwork && bulkReading;
 }
 
 function hasRecentVerifiedStepUp(stepUp) {
@@ -220,4 +217,42 @@ export async function decide(request) {
     reasonCode: 'approved',
     ruleIds: [RULE_IDS[0], 'resource_route_allowed'],
   };
+}
+
+// 별도 탐지 결과입니다. decide()의 5개 이름 응답은 바꾸지 않습니다.
+// 회수 API는 만들지 않고, 회수 "제안"만 대상 기기 한 개와 이유 코드로 남깁니다.
+export const REVOCATION_REASON_CODE = 'composite_anomaly';
+
+export function detect(request) {
+  if (!request || typeof request !== 'object' || Array.isArray(request)) {
+    return { schema: 'aleph.detection.v1', detected: false };
+  }
+
+  let hasFixtureSignals;
+  try {
+    hasFixtureSignals = validateSignals(request.signals);
+  } catch {
+    return { schema: 'aleph.detection.v1', requestId: request.requestId, detected: false };
+  }
+
+  const detected = hasCompositeRisk(request, hasFixtureSignals);
+  const deviceOk = typeof request.deviceId === 'string'
+    && /^[0-9a-f]{16}$/.test(request.deviceId)
+    && request.deviceRegistered === true;
+
+  const result = {
+    schema: 'aleph.detection.v1',
+    requestId: request.requestId,
+    detected,
+    ruleIds: detected ? [RULE_IDS[1]] : [],
+  };
+
+  if (detected && deviceOk) {
+    result.propose_revocation = {
+      targetDeviceId: request.deviceId,
+      reasonCode: REVOCATION_REASON_CODE,
+    };
+  }
+
+  return result;
 }
