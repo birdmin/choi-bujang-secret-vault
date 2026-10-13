@@ -1,4 +1,4 @@
 {
-  "explanation": "9단계에서는 같은 가명 주체의 GET 조회가 10분 안에 120건을 초과하면 별도 탐지 결과로 action: propose_revocation과 reasonCode: burst_read를 반환합니다. 사건에서 기기 ID가 하나로 확인되면 deviceId도 포함합니다. 사용자별 조회를 분리하고 10분 창 밖의 사건은 합산하지 않으며, 실제 회수 API를 호출하거나 권한을 변경하지 않습니다.",
+  "explanation": "9단계 복합 의심 탐지에서는 같은 가명 주체의 GET 조회가 10분 안에 120건을 초과하고, 해당 구간에 network: unusual 신호와 기기 ID가 확인된 사건이 함께 있을 때만 action: propose_revocation을 반환합니다. 결과의 reasonCode는 compound_network_burst이며 subject와 확인된 deviceId를 포함합니다. 조회 폭주만 있거나 비정상 네트워크 신호가 없거나 해당 신호 사건에 기기 ID가 없으면 action: observe를 반환합니다. 서로 다른 주체와 10분 창 밖의 조회는 합산하지 않으며 실제 회수 API를 호출하거나 권한을 변경하지 않습니다.",
   "blockedAt": null
 }
