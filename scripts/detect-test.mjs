@@ -21,7 +21,9 @@ const cases = [
   { name: '비정상 네트워크만 있는 조회', events: reads(30, { network: 'unusual' }), expected: { action: 'observe' } },
   { name: '정확히 120건', events: reads(120, { network: 'unusual' }), expected: { action: 'observe' } },
   { name: '복합 의심: 확인된 가상 기기', events: reads(121, { network: 'unusual' }), expected: {
-    propose_revocation: { targetDeviceId: deviceId, reasonCode: 'burst_read' } } },
+    action: 'propose_revocation',
+    propose_revocation: { targetDeviceId: deviceId, reasonCode: 'burst_read' },
+    targetDeviceId: deviceId, reasonCode: 'burst_read' } },
   { name: '미확인 기기는 제안 대상이 아님', events: reads(121, { network: 'unusual', registered: false }), expected: { action: 'observe' } },
   { name: '다른 기기는 제안 대상이 아님', events: reads(121, { network: 'unusual', device: 'bbbbbbbbbbbbbbbb' }), expected: { action: 'observe' } },
   { name: '서로 다른 사용자 각 100건', events: [...reads(100, { network: 'unusual' }),
