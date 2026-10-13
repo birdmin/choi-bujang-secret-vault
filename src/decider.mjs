@@ -98,7 +98,20 @@ export async function decide(request) {
     throw new TypeError('invalid_request');
   }
 
-  const hasFixtureSignals = validateSignals(request.signals);
+  let hasFixtureSignals;
+  try {
+    hasFixtureSignals = validateSignals(request.signals);
+  } catch {
+    // 계약에 맞지 않거나 신뢰할 수 없는 신호는 허용하지 않고 추가 확인으로 보냅니다.
+    // 기존 등록된 RULE_IDS와 허용된 reasonCode만 사용합니다.
+    return {
+      schema: 'aleph.decision.v1',
+      requestId: request.requestId,
+      decision: 'step_up',
+      reasonCode: 'step_up_required',
+      ruleIds: [RULE_IDS[1]],
+    };
+  }
 
   // 기존 기기 등록 규칙을 유지합니다.
   if (request.deviceRegistered !== true) {
