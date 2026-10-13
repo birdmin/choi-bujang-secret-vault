@@ -1,5 +1,6 @@
 const WINDOW_MS = 10 * 60 * 1000;
 const READ_THRESHOLD = 120;
+const CONFIRMED_VIRTUAL_DEVICE_ID = 'aaaaaaaaaaaaaaaa';
 
 function nonEmptyString(value) {
   return typeof value === 'string' && value.trim()
@@ -29,6 +30,7 @@ function parseEvent(raw) {
     raw.userId ??
     raw.user?.id;
   const method = raw.method ?? raw.request?.method ?? raw.requestType ?? raw.kind;
+  const network = raw.network ?? raw.request?.network ?? raw.context?.network;
 
   if (
     typeof at !== 'string' ||
@@ -36,8 +38,6 @@ function parseEvent(raw) {
     typeof subject !== 'string' ||
     !subject.trim()
   ) return null;
-
-  const network = raw.network ?? raw.request?.network ?? raw.context?.network;
 
   return {
     timestamp: Date.parse(at),
@@ -69,23 +69,22 @@ export function detect(events) {
         start += 1;
       }
 
-      const count = end - start + 1;
-      if (count <= READ_THRESHOLD) continue;
+      if (end - start + 1 <= READ_THRESHOLD) continue;
 
       const window = reads.slice(start, end + 1);
+      const allFromConfirmedDevice = window.every(
+        event => event.deviceId === CONFIRMED_VIRTUAL_DEVICE_ID
+      );
       const hasUnusualNetwork = window.some(event => event.network === 'unusual');
-      const devices = new Set(window.map(event => event.deviceId).filter(Boolean));
 
-      // 제안은 조회 폭주 + 비정상 네트워크 + 단일 식별 기기가 함께 확인될 때만 냅니다.
-      if (!hasUnusualNetwork || devices.size !== 1 || window.some(event => !event.deviceId)) {
-        continue;
-      }
+      // 조회 폭주, 비정상 네트워크, 확인된 가상 기기가 함께 있어야만 제안한다.
+      if (!allFromConfirmedDevice || !hasUnusualNetwork) continue;
 
       return {
         action: 'propose_revocation',
-        reasonCode: 'compound_network_burst',
+        reasonCode: 'burst_read',
         subject,
-        deviceId: [...devices][0],
+        deviceId: CONFIRMED_VIRTUAL_DEVICE_ID,
       };
     }
   }
