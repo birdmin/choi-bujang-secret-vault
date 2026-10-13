@@ -39,7 +39,9 @@ function findCompositeSuspicion(events) {
         && at - firstAt <= 10 * 60 * 1000;
     });
 
-    if (window.length > 120 && window.some((event) => event.network === 'unusual')) {
+    if (first.deviceId === CONFIRMED_VIRTUAL_DEVICE_ID
+      && window.length > 120
+      && window.some((event) => event.network === 'unusual')) {
       return {
         action: 'propose_revocation',
         targetDeviceId: first.deviceId,
