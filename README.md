@@ -122,3 +122,11 @@ GitHub에서는 최신 `main` 브랜치의 파일을 검색하고, 공개 배포
 미등록 기기의 가상 요청은 `deny`와 `device_not_registered`를 모두 확인해야 통과합니다. 로그 끝의 안내처럼 이 결과는 로컬/가상 연습 결과이며 실제 심판 통과 증거가 아닙니다. 미등록 기기 공격에 대한 실제 심판 판정은 심판이 수행합니다.
 
 이 저장소는 `main` 브랜치에 변경 사항이 올라오면 이 시험을 자동 실행하며, Actions 화면에서 **Run workflow**로 수동 실행할 수도 있습니다. 시험 실행 전에는 결과를 통과로 기록하지 않습니다.
+
+
+## 6단계 저장점: 등록 기기 판정
+
+- `src/decider.mjs`는 `request.deviceRegistered === true`인 요청만 허용하고, 나머지는 `deny` / `device_not_registered`로 반환합니다.
+- `npm run decider:test`는 GitHub Actions에서 가상 요청으로 확인합니다. 정상 요청과 미등록 기기 거부가 모두 통과했으며, 실제 심판 판정은 아닙니다.
+- 직접 확인: 등록 기기로 기존 화면 접속, 미등록 기기 거부, 개인키를 코드·로그·제출 묶음에 넣지 않았는지 확인합니다. 개인키 값 자체는 공유하지 않습니다.
+- 제출 묶음은 `npm run bundle`로 생성합니다. `bundle-notes.json`과 `artifacts/submission.json`은 저장소에 커밋하지 않습니다.
