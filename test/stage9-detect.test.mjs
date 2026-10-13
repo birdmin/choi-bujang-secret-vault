@@ -28,6 +28,10 @@ test('조회 폭주와 비정상 네트워크, 확인된 기기 ID가 함께 있
     reasonCode: 'compound_network_burst',
     subject,
     deviceId,
+    propose_revocation: {
+      targetDeviceId: deviceId,
+      reasonCode: 'composite_anomaly',
+    },
   });
 });
 
@@ -41,6 +45,23 @@ test('다량 조회만으로 회수 제안을 내지 않는다', () => {
 
 test('기기 식별자가 없으면 회수 제안을 내지 않는다', () => {
   assert.deepEqual(detectEvents(reads(121, { network: 'unusual' })), { action: 'observe' });
+});
+
+test('다른 조회의 기기 ID가 달라도 이상 네트워크 사건의 기기를 제안한다', () => {
+  const events = [
+    ...reads(120, { network: 'usual', deviceId }),
+    ...reads(1, { network: 'unusual', deviceId: 'bbbbbbbbbbbbbbbb' }),
+  ];
+  assert.deepEqual(detectEvents(events), {
+    action: 'propose_revocation',
+    reasonCode: 'compound_network_burst',
+    subject,
+    deviceId: 'bbbbbbbbbbbbbbbb',
+    propose_revocation: {
+      targetDeviceId: 'bbbbbbbbbbbbbbbb',
+      reasonCode: 'composite_anomaly',
+    },
+  });
 });
 
 test('지역 정보만으로는 회수 제안을 내지 않는다', () => {
