@@ -236,9 +236,11 @@ export function detect(request) {
   }
 
   const detected = hasCompositeRisk(request, hasFixtureSignals);
+  // 탐지 결과는 접근 허용/거부와 별개입니다. 등록 여부가 false인 요청도
+  // 엔진이 제공한 형식의 기기 ID가 있으면 의심 사건의 대상 후보를 특정할 수 있습니다.
+  // 실제 권한 변경은 하지 않고, 회수 제안만 기록합니다.
   const deviceOk = typeof request.deviceId === 'string'
-    && /^[0-9a-f]{16}$/.test(request.deviceId)
-    && request.deviceRegistered === true;
+    && /^[0-9a-f]{16}$/.test(request.deviceId);
 
   const result = {
     schema: 'aleph.detection.v1',
