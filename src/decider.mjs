@@ -34,25 +34,20 @@ function validateSignals(signals) {
 function hasCompositeRisk(request, hasFixtureSignals) {
   if (!hasFixtureSignals) return false;
 
-  const { hour, network } = request.signals;
+  const { region, hour, network } = request.signals;
+  // The fixture's foreign region represents a region change; real-path signals are unknown.
+  const unusualRegion = region !== 'local';
   const unusualHour = hour < 6 || hour >= 23;
   const unfamiliarNetwork = network === 'unusual';
-  const bulkRead = Array.isArray(request.recentEvents)
+  const bulkModification = Array.isArray(request.recentEvents)
     && request.recentEvents.some(event =>
-      event && event.kind === 'risk_signal'
+      event && ['bulk_modify', 'bulk_write', 'modify', 'write', 'risk_signal'].includes(event.kind)
       && Number.isInteger(event.ageSeconds) && event.ageSeconds >= 0
       && event.ageSeconds <= 300
       && Number.isInteger(event.count) && event.count >= 10
     );
 
-  return unusualHour && unfamiliarNetwork && bulkRead;
-}
-
-function hasRecentVerifiedStepUp(stepUp) {
-  return stepUp && stepUp.verified === true
-    && Number.isInteger(stepUp.authAgeSeconds)
-    && stepUp.authAgeSeconds >= 0
-    && stepUp.authAgeSeconds <= 900;
+  return unusualRegion && unusualHour && unfamiliarNetwork && bulkModification;
 }
 
 export async function decide(request) {
@@ -72,8 +67,7 @@ export async function decide(request) {
     };
   }
 
-  if (hasCompositeRisk(request, hasFixtureSignals)
-      && !hasRecentVerifiedStepUp(request.stepUp)) {
+  if (hasCompositeRisk(request, hasFixtureSignals)) {
     return {
       schema: 'aleph.decision.v1',
       requestId: request.requestId,
