@@ -48,6 +48,13 @@ function hasCompositeRisk(request, hasFixtureSignals) {
   return unusualHour && unfamiliarNetwork && bulkRead;
 }
 
+function hasRecentVerifiedStepUp(stepUp) {
+  return stepUp && stepUp.verified === true
+    && Number.isInteger(stepUp.authAgeSeconds)
+    && stepUp.authAgeSeconds >= 0
+    && stepUp.authAgeSeconds <= 900;
+}
+
 export async function decide(request) {
   if (!request || typeof request !== 'object' || Array.isArray(request)) {
     throw new TypeError('invalid_request');
@@ -65,7 +72,8 @@ export async function decide(request) {
     };
   }
 
-  if (hasCompositeRisk(request, hasFixtureSignals)) {
+  if (hasCompositeRisk(request, hasFixtureSignals)
+      && !hasRecentVerifiedStepUp(request.stepUp)) {
     return {
       schema: 'aleph.decision.v1',
       requestId: request.requestId,
