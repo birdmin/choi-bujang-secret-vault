@@ -72,6 +72,14 @@ const cases = [
     expected: { action: 'observe' },
   },
   {
+    name: '조회 폭주 중 기기 ID가 섞이면 회수하지 않음',
+    events: [
+      ...reads(120, suspicious),
+      ...reads(1, { network: 'unusual', deviceId: 'bbbbbbbbbbbbbbbb' }),
+    ],
+    expected: { action: 'observe' },
+  },
+  {
     name: '지역 정보만으로는 회수하지 않음',
     events: reads(121, {
       region: 'foreign',
