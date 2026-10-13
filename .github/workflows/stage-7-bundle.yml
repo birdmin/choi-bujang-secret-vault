@@ -1,0 +1,46 @@
+name: Stage 7 submission bundle
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install project dependencies
+        run: npm ci
+      - name: Prepare stage 7 bundle notes outside the repository
+        run: |
+          cat > /tmp/bundle-notes.json <<'EOF'
+          {
+            "explanation": "7단계에서는 기존 등록 기기 규칙을 유지하고, 가상 사건의 비정상 시각·낯선 네트워크·최근 대량 읽기가 결합되면 step_up_required로 추가 확인을 요청하도록 했습니다. 정상 가상 사건은 allow, 복합 이상 사건은 step_up, 유효한 최근 확인이 포함된 가상 재요청은 allow입니다. 현재 제공 계약에는 동일 사용자의 실제 재로그인 시각 검증이 없어 실제 자료 차단과 재로그인 전후 실측은 미실행입니다. 이 결과는 가상 연습이며 실제 심판 판정이 아닙니다.",
+            "blockedAt": null
+          }
+          EOF
+      - name: Run submission bundle
+        env:
+          BUNDLE_NOTES_PATH: /tmp/bundle-notes.json
+        run: npm run bundle
+      - name: Show submission JSON and summary
+        if: success()
+        run: |
+          cat artifacts/submission.json
+          echo ""
+          echo "=== 제출 요약 ==="
+          node -e "const b=require('./artifacts/submission.json'); console.log(JSON.stringify({step:b.step,commit:b.commit,repoUrl:b.repoUrl,changedFiles:b.changedFiles,policyRules:b.policyRules,attackAttempts:b.attackAttempts,explanation:b.explanation,blockedAt:b.blockedAt},null,2))"
+      - name: Upload submission JSON
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-7-submission
+          path: artifacts/submission.json
