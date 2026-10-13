@@ -1,4 +1,5 @@
 import config from '../../aleph.config.json' with { type: 'json' };
+import { RESOURCE_IDS, markResource } from '../../src/resource-ids.mjs';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../../src/verify-login.mjs';
 
@@ -41,6 +42,7 @@ function validUuid(value) {
 }
 
 export default async function handler(request, response) {
+  markResource(response, RESOURCE_IDS.studentMemos);
   const identity = await authenticate(request, response);
   if (!identity) return;
 
@@ -59,7 +61,7 @@ export default async function handler(request, response) {
     }
 
     response.setHeader('Cache-Control', 'no-store');
-    response.status(200).json({ memos: data });
+    response.status(200).json({ resourceId: RESOURCE_IDS.studentMemos, memos: data });
     return;
   }
 
@@ -91,7 +93,7 @@ export default async function handler(request, response) {
       return;
     }
 
-    response.status(201).json({ id: memoId });
+    response.status(201).json({ resourceId: RESOURCE_IDS.studentMemos, id: memoId });
     return;
   }
 
