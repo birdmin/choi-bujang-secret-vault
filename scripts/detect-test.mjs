@@ -37,7 +37,7 @@ const suspicious = {
 
 const expectedRevocation = {
   action: 'propose_revocation',
-  reasonCode: 'burst_read',
+  reasonCode: 'compound_network_burst',
   subject,
   deviceId,
 };
