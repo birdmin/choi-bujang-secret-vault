@@ -36,14 +36,15 @@ function findCompositeSuspicion(events) {
         && at - firstAt <= 10 * 60 * 1000;
     });
 
-    if (window.length > 120 && window.some((event) => event.network === 'unusual')) {
+    
+if (window.length > 120 && window.some((event) => event.network === 'unusual')) {
   return {
-    propose_revocation: {
-      targetDeviceId: CONFIRMED_VIRTUAL_DEVICE_ID,
-      reasonCode: 'burst_read',
-      },
-    };
-  }
+    action: 'propose_revocation',
+    targetDeviceId: CONFIRMED_VIRTUAL_DEVICE_ID,
+    reasonCode: 'burst_read',
+  };
+}
+
   }
   return null;
 }
