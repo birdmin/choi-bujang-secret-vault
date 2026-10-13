@@ -1,0 +1,32 @@
+name: Submission bundle check
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install project dependencies
+        run: npm ci
+      - name: Generate submission bundle
+        run: npm run bundle
+      - name: Upload submission JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-9-submission-bundle
+          path: artifacts/submission.json
+          if-no-files-found: error
