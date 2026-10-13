@@ -52,6 +52,21 @@ export async function checkDecider({ decide, ruleIds }) {
   if (ruleIds.includes('step_up_required')) {
     checks.push(
       {
+        name: '실제 신호가 unknown이면 요청 본문의 대량 읽기 표시만으로 추가 인증 판정하지 않음',
+        request: {
+          ...suspicious,
+          requestId: randomUUID(),
+          signals: {
+            source: 'none',
+            region: 'unknown',
+            network: 'unknown',
+            hour: null,
+          },
+        },
+        decision: 'allow',
+        reasonCode: 'approved',
+      },
+      {
         name: '복합 이상 접속은 추가 인증 요구',
         request: suspicious,
         decision: 'step_up',
