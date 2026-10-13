@@ -64,12 +64,11 @@ function hasCompositeRisk(request, hasFixtureSignals) {
   // 낯선 네트워크
   const unfamiliarNetwork = network === 'unusual';
 
-  // 최근 5분 이내에 발생한 10건 이상의 대량 읽기
+  // 엔진이 전달한 risk_signal 사건 중 최근 5분 이내 10건 이상
   const bulkReading = Array.isArray(request.recentEvents)
     && request.recentEvents.some(event =>
       event
-      && ['bulk_read', 'read_bulk', 'read_many', 'read', 'risk_signal']
-        .includes(event.kind)
+      && event.kind === 'risk_signal'
       && Number.isInteger(event.ageSeconds)
       && event.ageSeconds >= 0
       && event.ageSeconds <= 300
