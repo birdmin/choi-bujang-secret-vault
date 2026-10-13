@@ -1,69 +1,120 @@
-const CONFIRMED_VIRTUAL_DEVICE_ID = 'aaaaaaaaaaaaaaaa';
+const WINDOW_MS = 10 * 60 * 1000;
+const READ_THRESHOLD = 120;
 
-function normalizeEvents(events) {
-  if (!Array.isArray(events)) throw new TypeError('invalid_detection_events');
-  return events.map((event) => {
-    if (!event || typeof event !== 'object' || Array.isArray(event)) {
-      throw new TypeError('invalid_detection_event');
-    }
-    const at = event.at;
-    const method = event.method;
-    const sub = event.identity?.sub;
-    if (
-      typeof at !== 'string'
-      || Number.isNaN(Date.parse(at))
-      || typeof method !== 'string'
-      || !method
-      || typeof sub !== 'string'
-      || !sub
-    ) {
-      throw new TypeError('invalid_detection_event');
-    }
-
-    const deviceId = typeof event.deviceId === 'string' ? event.deviceId : '';
-    const deviceRegistered = event.deviceRegistered === true;
-    const network = event.network === 'unusual' ? 'unusual' : 'normal';
-    return { at, method, identity: { sub }, deviceId, deviceRegistered, network };
-  });
+function nonEmptyString(value) {
+  return typeof value === 'string' && value.trim()
+    ? value.trim()
+    : null;
 }
 
-function findCompositeSuspicion(events) {
-  const reads = events
-    .filter((event) => event.method === 'GET')
-    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+function readDeviceId(event) {
+  return (
+    nonEmptyString(event.deviceId) ??
+    nonEmptyString(event.device?.id) ??
+    nonEmptyString(event.identity?.deviceId) ??
+    nonEmptyString(event.context?.deviceId) ??
+    nonEmptyString(event.request?.deviceId)
+  );
+}
 
-  for (let start = 0; start < reads.length; start += 1) {
-    const first = reads[start];
-    if (first.deviceId !== CONFIRMED_VIRTUAL_DEVICE_ID || !first.deviceRegistered) continue;
+function parseEvent(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return null;
+  }
 
-    const firstAt = Date.parse(first.at);
-    const window = reads.filter((event) => {
-      const at = Date.parse(event.at);
-      return event.identity.sub === first.identity.sub
-        && event.deviceId === CONFIRMED_VIRTUAL_DEVICE_ID
-        && event.deviceRegistered
-        && at >= firstAt
-        && at - firstAt <= 10 * 60 * 1000;
-    });
+  const at = raw.at ?? raw.timestamp;
 
-    if (window.length > 120 && window.some((event) => event.network === 'unusual')) {
-      return {
+  const subject =
+    raw.identity?.sub ??
+    raw.subjectId ??
+    raw.subject ??
+    raw.pseudonym ??
+    raw.userId ??
+    raw.user?.id;
+
+  const method =
+    raw.method ??
+    raw.request?.method ??
+    raw.requestType ??
+    raw.kind;
+
+  if (
+    typeof at !== 'string' ||
+    !Number.isFinite(Date.parse(at)) ||
+    typeof subject !== 'string' ||
+    !subject.trim()
+  ) {
+    return null;
+  }
+
+  return {
+    timestamp: Date.parse(at),
+    subject: subject.trim(),
+    method: typeof method === 'string'
+      ? method.toUpperCase()
+      : null,
+    deviceId: readDeviceId(raw),
+  };
+}
+
+export function detect(events) {
+  if (!Array.isArray(events)) {
+    throw new TypeError('invalid_detection_events');
+  }
+
+  const bySubject = new Map();
+
+  for (const raw of events) {
+    const event = parseEvent(raw);
+    if (!event) continue;
+
+    const group = bySubject.get(event.subject) ?? [];
+    group.push(event);
+    bySubject.set(event.subject, group);
+  }
+
+  for (const [subject, eventsForSubject] of bySubject) {
+    eventsForSubject.sort(
+      (a, b) => a.timestamp - b.timestamp
+    );
+
+    const reads = eventsForSubject.filter(
+      event => event.method === 'GET'
+    );
+
+    for (
+      let end = 0, start = 0;
+      end < reads.length;
+      end++
+    ) {
+      while (
+        reads[end].timestamp - reads[start].timestamp >= WINDOW_MS
+      ) {
+        start++;
+      }
+
+      if (end - start + 1 <= READ_THRESHOLD) {
+        continue;
+      }
+
+      const devices = new Set();
+      for (let i = start; i <= end; i++) {
+        if (reads[i].deviceId) devices.add(reads[i].deviceId);
+      }
+
+      const result = {
         action: 'propose_revocation',
-        propose_revocation: {
-          targetDeviceId: CONFIRMED_VIRTUAL_DEVICE_ID,
-          reasonCode: 'burst_read',
-        },
-        targetDeviceId: CONFIRMED_VIRTUAL_DEVICE_ID,
         reasonCode: 'burst_read',
+        subject,
       };
+
+      if (devices.size === 1) {
+        result.deviceId = [...devices][0];
+      }
+
+      return result;
     }
   }
 
-  return null;
-}
-
-// 별도 탐지 결과만 반환하며 실제 회수 API를 호출하거나 권한을 변경하지 않습니다.
-export function detect(events) {
-  const normalized = normalizeEvents(events);
-  return findCompositeSuspicion(normalized) ?? { action: 'observe' };
+  return { action: 'observe' };
 }
