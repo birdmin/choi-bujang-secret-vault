@@ -87,12 +87,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const { decide, RULE_IDS } = await import('../src/decider.mjs');
     const results = await checkDecider({ decide, ruleIds: RULE_IDS });
     for (const item of results) {
-      process.stdout.write(`${item.passed ? '통과' : '확인 필요'} · ${item.name}\\n`);
+      process.stdout.write(`${item.passed ? '통과' : '확인 필요'} · ${item.name}\n`);
     }
-    process.stdout.write('이 명령은 가상 요청으로 연습하며 심판 통과 증거가 아닙니다.\\n');
+    process.stdout.write('이 명령은 가상 요청으로 연습하며 심판 통과 증거가 아닙니다.\n');
     if (results.some(item => !item.passed)) process.exitCode = 1;
   } catch (error) {
-    process.stderr.write(`판정기 연습 첫 오류: ${error.message}\\n`);
+    process.stderr.write(`판정기 연습 첫 오류: ${error.message}\n`);
     process.exitCode = 1;
   }
 }
