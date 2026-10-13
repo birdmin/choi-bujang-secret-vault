@@ -96,7 +96,7 @@ try {
   const failedChecks = attackAttempts.filter((attempt) => {
     const observed = attempt.observed;
     if (attempt.attackId === 'anonymous_memo_list_read') {
-      return !/비로그인 \/api\/memos가 JSON 오류로 차단됨 \(HTTP (401|403)\)/u.test(observed);
+      return !/비로그인 \/api\/notes가 JSON 오류로 차단됨 \(HTTP (401|403)\)/u.test(observed);
     }
     if (attempt.attackId === 'anonymous_runtime_config_read') {
       return !/배포된 \/aleph\.json에서 allowedRoutes와 originalApiUrl 확인 \(HTTP 2\d\d\)/u.test(observed);
