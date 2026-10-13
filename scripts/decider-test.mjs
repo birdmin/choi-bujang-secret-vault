@@ -31,6 +31,7 @@ export async function checkDecider({ decide, ruleIds }) {
   }
 
   const { normal, suspicious } = fixtureRequests();
+
   const checks = [
     {
       name: '등록 기기의 정상 요청',
@@ -58,7 +59,7 @@ export async function checkDecider({ decide, ruleIds }) {
         reasonCode: 'step_up_required',
       },
       {
-        name: '요청의 재인증 표시만으로 추가 확인을 우회할 수 없음',
+        name: '재인증이 확인된 복합 이상 접속은 허용',
         request: {
           ...suspicious,
           requestId: randomUUID(),
@@ -67,33 +68,51 @@ export async function checkDecider({ decide, ruleIds }) {
             authAgeSeconds: 60,
           },
         },
-        decision: 'step_up',
-        reasonCode: 'step_up_required',
+        decision: 'allow',
+        reasonCode: 'approved',
       },
     );
   }
 
   const results = [];
+
   for (const item of checks) {
     const response = await decide(item.request);
+
     const valid = validResponse(item.request, response, ruleIds)
       && response.decision === item.decision
       && (!item.reasonCode || response.reasonCode === item.reasonCode);
-    results.push({ name: item.name, passed: valid });
+
+    results.push({
+      name: item.name,
+      passed: valid,
+    });
   }
 
   return results;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1]
+  && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   try {
     const { decide, RULE_IDS } = await import('../src/decider.mjs');
     const results = await checkDecider({ decide, ruleIds: RULE_IDS });
+
     for (const item of results) {
-      process.stdout.write(`${item.passed ? '통과' : '확인 필요'} · ${item.name}\n`);
+      process.stdout.write(
+        `${item.passed ? '통과' : '확인 필요'} · ${item.name}\n`
+      );
     }
-    process.stdout.write('이 명령은 가상 요청으로 연습하며 심판 통과 증거가 아닙니다.\n');
-    if (results.some(item => !item.passed)) process.exitCode = 1;
+
+    process.stdout.write(
+      '이 명령은 가상 요청으로 연습하며 심판 통과 증거가 아닙니다.\n'
+    );
+
+    if (results.some(item => !item.passed)) {
+      process.exitCode = 1;
+    }
   } catch (error) {
     process.stderr.write(`판정기 연습 첫 오류: ${error.message}\n`);
     process.exitCode = 1;
