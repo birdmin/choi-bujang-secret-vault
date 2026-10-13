@@ -18,7 +18,7 @@ export async function decide(request) {
     schema: 'aleph.decision.v1',
     requestId: request.requestId,
     decision: 'allow',
-    reasonCode: 'device_registered',
+    reasonCode: 'approved',
     ruleIds: [RULE_IDS[0]],
   };
 }
