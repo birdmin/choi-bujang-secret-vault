@@ -1,4 +1,3 @@
-```javascript
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -119,4 +118,3 @@ if (
     process.exitCode = 1;
   }
 }
-```
