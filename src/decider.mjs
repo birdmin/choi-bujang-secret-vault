@@ -51,6 +51,7 @@ function validateSignals(signals) {
 
 function hasCompositeRisk(request, hasFixtureSignals) {
   // 실제 요청의 브라우저 제공 위치·네트워크·시각은 위험 판정 근거로 쓰지 않습니다.
+  // source:none인 실제 요청의 이벤트도 엔진이 검증한 가상 위험 신호로 승격하지 않습니다.
   if (!hasFixtureSignals) return false;
 
   const { hour, network } = request.signals;
