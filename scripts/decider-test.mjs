@@ -50,6 +50,25 @@ export async function checkDecider({ decide, ruleIds }) {
     },
   ];
 
+  checks.push(
+    {
+      name: '형식이 잘못된 신호는 추가 확인으로 보냄',
+      request: { ...normal, requestId: randomUUID(), signals: null },
+      decision: 'step_up',
+      reasonCode: 'step_up_required',
+    },
+    {
+      name: '신뢰할 수 없는 신호 출처는 추가 확인으로 보냄',
+      request: {
+        ...normal,
+        requestId: randomUUID(),
+        signals: { ...normal.signals, source: 'browser' },
+      },
+      decision: 'step_up',
+      reasonCode: 'step_up_required',
+    },
+  );
+
   if (ruleIds.includes('step_up_required')) {
     checks.push(
       {
