@@ -19,15 +19,17 @@ jobs:
           cache: npm
       - name: Install project dependencies
         run: npm ci
-      - name: Prepare stage 6 bundle notes (temporary, not committed)
+      - name: Prepare stage 6 bundle notes outside the repository
         run: |
-          cat > bundle-notes.json <<'EOF'
+          cat > /tmp/bundle-notes.json <<'EOF'
           {
             "explanation": "6단계에서는 판정기에 등록 기기 조건을 적용했습니다. deviceRegistered가 true인 요청만 허용하고, 그 외 요청은 device_not_registered로 거부합니다. GitHub Actions의 가상 시험에서 등록 기기 정상 요청과 미등록 기기 거부를 확인했습니다. 이 연습 결과는 실제 심판 판정이 아닙니다.",
             "blockedAt": null
           }
           EOF
       - name: Run submission bundle
+        env:
+          BUNDLE_NOTES_PATH: /tmp/bundle-notes.json
         run: npm run bundle
       - name: Show submission JSON and summary
         if: success()
