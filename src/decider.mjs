@@ -1,4 +1,3 @@
-```javascript
 // ALEPH SDP 엔진이 확인한 요청만 받는 학생 판정기 시작점입니다.
 // 6단계: 등록된 기기의 자료실 읽기 요청만 허용합니다.
 // 7단계: 엔진이 전달한 가상 신호의 출처를 검사하고,
@@ -135,4 +134,3 @@ export async function decide(request) {
     ruleIds: [RULE_IDS[0]],
   };
 }
-```
