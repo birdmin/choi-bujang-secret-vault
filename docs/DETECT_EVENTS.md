@@ -1,11 +1,28 @@
 # 9단계 탐지 연습 사건 계약
 
-`npm run detect:test`는 학생이 작성한 `src/detect.mjs`의 `detect(events)`에 가상 조회 사건을 전달합니다. 각 사건은 다음 세 값만 가집니다.
+`npm run detect:test`는 `src/detect.mjs`의 `detect(events)`에 가상 조회 사건을 전달합니다. 기본 사건 형식은 다음과 같습니다.
 
 ```js
-{ at: '2026-10-01T00:00:00.000Z', method: 'GET', identity: { sub: 'learner_fixture' } }
+{
+  at: '2026-10-01T00:00:00.000Z',
+  method: 'GET',
+  identity: { sub: 'learner_fixture' },
+  network: 'unusual',
+  deviceId: 'aaaaaaaaaaaaaaaa'
+}
 ```
 
-같은 `identity.sub`의 `GET` 사건이 어느 10분 구간에서든 **120건을 넘을 때만** `{ action: 'propose_revocation', reasonCode: 'burst_read', subject: '해당 sub' }`를 돌려줍니다. 그 밖에는 `{ action: 'observe' }`입니다. 정확히 120건은 회수 제안 대상이 아닙니다. 다른 사용자의 사건을 합산하거나 10분 밖의 사건을 같은 묶음으로 세지 않습니다.
+같은 `identity.sub`의 GET 조회가 10분 안에 120건을 초과하고, 그 구간 안에 `network: 'unusual'`인 사건과 해당 사건의 기기 ID가 확인되면 다음을 반환합니다.
 
-이 파일의 사건 모양은 **로컬 연습용**입니다. 브라우저가 보낸 사용자 번호를 신원으로 취급하지 않습니다. 운영 반 엔진이 검증한 사건을 전달하고 회수 제안을 집행하는 경로는 별도로 연결·시험해야 합니다. 이 명령의 통과를 실제 접속 차단이나 심판 판정으로 표시하지 않습니다.
+```js
+{
+  action: 'propose_revocation',
+  reasonCode: 'compound_network_burst',
+  subject: 'learner_fixture',
+  deviceId: 'aaaaaaaaaaaaaaaa'
+}
+```
+
+정확히 120건이거나, 조회 폭주만 있거나, 비정상 네트워크 신호가 없거나, 비정상 네트워크 사건에서 기기 ID를 확인할 수 없으면 `{ action: 'observe' }`를 반환합니다. 서로 다른 주체의 조회를 합산하지 않으며, 10분 창 밖의 조회도 합산하지 않습니다.
+
+이 명령은 가상 사건을 사용하는 로컬 연습입니다. 실제 접속 회수를 수행하거나 심판 통과를 증명하지 않습니다.
