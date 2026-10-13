@@ -7,7 +7,75 @@
 export const RULE_IDS = Object.freeze([
   'device_registered',
   'step_up_required',
+  'resource_route_allowed',
+  'resource_route_denied',
 ]);
+
+const ROUTE_POLICY = Object.freeze({
+  memo: {
+    service: 'notes',
+    method: 'GET',
+    path: /^\\/notes\\/[^/]+$/,
+    route: 'GET /notes/:id',
+  },
+  classNoticeCollection: {
+    service: 'class-notices',
+    method: 'GET',
+    path: /^\\/class-notices$/,
+    route: 'GET /class-notices',
+  },
+  classNoticeDetail: {
+    service: 'class-notices',
+    method: 'GET',
+    path: /^\\/class-notices\\/[^/]+$/,
+    route: 'GET /class-notices/:id',
+  },
+  instructorMaterial: {
+    service: 'instructor-materials',
+    path: /^\\/instructor-materials(?:\\/[^/]+)?$/,
+  },
+});
+
+function routeAllowed(request) {
+  if (typeof request.service !== 'string'
+    || typeof request.method !== 'string'
+    || typeof request.path !== 'string'
+    || typeof request.route !== 'string') return false;
+
+  // 쿼리로 기능을 선택하지 못하게 하고, 경로의 모양과 서비스·메서드를 함께 확인합니다.
+  if (request.path.includes('?') || request.path.includes('#')) return false;
+
+  const { memo, classNoticeCollection, classNoticeDetail, instructorMaterial } = ROUTE_POLICY;
+
+  if (instructorMaterial.service === request.service
+    && instructorMaterial.path.test(request.path)) return false;
+
+  if (memo.service === request.service) {
+    return request.method === memo.method
+      && memo.path.test(request.path)
+      && request.route === memo.route;
+  }
+
+  if (classNoticeCollection.service === request.service) {
+    return request.method === classNoticeCollection.method
+      && ((classNoticeCollection.path.test(request.path)
+        && request.route === classNoticeCollection.route)
+        || (classNoticeDetail.path.test(request.path)
+          && request.route === classNoticeDetail.route));
+  }
+
+  return false;
+}
+
+function routeDecision(request, allowed) {
+  return {
+    schema: 'aleph.decision.v1',
+    requestId: request.requestId,
+    decision: allowed ? 'allow' : 'deny',
+    reasonCode: allowed ? 'approved' : 'route_not_allowed',
+    ruleIds: [allowed ? 'resource_route_allowed' : 'resource_route_denied'],
+  };
+}
 
 function validateSignals(signals) {
   if (!signals || typeof signals !== 'object' || Array.isArray(signals)) {
@@ -98,6 +166,11 @@ export async function decide(request) {
     throw new TypeError('invalid_request');
   }
 
+  // 구역 경로 정책을 먼저 적용합니다. 요청에는 역할이 없으므로 강사 권한을 추정하지 않습니다.
+  if (!routeAllowed(request)) {
+    return routeDecision(request, false);
+  }
+
   let hasFixtureSignals;
   try {
     hasFixtureSignals = validateSignals(request.signals);
@@ -144,6 +217,6 @@ export async function decide(request) {
     requestId: request.requestId,
     decision: 'allow',
     reasonCode: 'approved',
-    ruleIds: [RULE_IDS[0]],
+    ruleIds: [RULE_IDS[0], 'resource_route_allowed'],
   };
 }
