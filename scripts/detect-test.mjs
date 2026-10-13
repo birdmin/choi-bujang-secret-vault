@@ -40,6 +40,10 @@ const expectedRevocation = {
   reasonCode: 'compound_network_burst',
   subject,
   deviceId,
+  propose_revocation: {
+    targetDeviceId: deviceId,
+    reasonCode: 'composite_anomaly',
+  },
 };
 
 const cases = [
@@ -72,12 +76,21 @@ const cases = [
     expected: { action: 'observe' },
   },
   {
-    name: '조회 폭주 중 기기 ID가 섞이면 회수하지 않음',
+    name: '다른 조회에 기기 ID가 섞여도 이상 네트워크 사건의 기기를 제안',
     events: [
-      ...reads(120, suspicious),
+      ...reads(120, { network: 'usual', deviceId }),
       ...reads(1, { network: 'unusual', deviceId: 'bbbbbbbbbbbbbbbb' }),
     ],
-    expected: { action: 'observe' },
+    expected: {
+      action: 'propose_revocation',
+      reasonCode: 'compound_network_burst',
+      subject,
+      deviceId: 'bbbbbbbbbbbbbbbb',
+      propose_revocation: {
+        targetDeviceId: 'bbbbbbbbbbbbbbbb',
+        reasonCode: 'composite_anomaly',
+      },
+    },
   },
   {
     name: '지역 정보만으로는 회수하지 않음',
