@@ -18,12 +18,9 @@ function readDeviceId(event) {
 }
 
 function parseEvent(raw) {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return null;
-  }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
 
   const at = raw.at ?? raw.timestamp;
-
   const subject =
     raw.identity?.sub ??
     raw.subjectId ??
@@ -31,88 +28,65 @@ function parseEvent(raw) {
     raw.pseudonym ??
     raw.userId ??
     raw.user?.id;
-
-  const method =
-    raw.method ??
-    raw.request?.method ??
-    raw.requestType ??
-    raw.kind;
+  const method = raw.method ?? raw.request?.method ?? raw.requestType ?? raw.kind;
 
   if (
     typeof at !== 'string' ||
     !Number.isFinite(Date.parse(at)) ||
     typeof subject !== 'string' ||
     !subject.trim()
-  ) {
-    return null;
-  }
+  ) return null;
+
+  const network = raw.network ?? raw.request?.network ?? raw.context?.network;
 
   return {
     timestamp: Date.parse(at),
     subject: subject.trim(),
-    method: typeof method === 'string'
-      ? method.toUpperCase()
-      : null,
+    method: typeof method === 'string' ? method.toUpperCase() : null,
     deviceId: readDeviceId(raw),
+    network: typeof network === 'string' ? network.toLowerCase() : null,
   };
 }
 
 export function detect(events) {
-  if (!Array.isArray(events)) {
-    throw new TypeError('invalid_detection_events');
-  }
+  if (!Array.isArray(events)) throw new TypeError('invalid_detection_events');
 
   const bySubject = new Map();
-
   for (const raw of events) {
     const event = parseEvent(raw);
     if (!event) continue;
-
     const group = bySubject.get(event.subject) ?? [];
     group.push(event);
     bySubject.set(event.subject, group);
   }
 
   for (const [subject, eventsForSubject] of bySubject) {
-    eventsForSubject.sort(
-      (a, b) => a.timestamp - b.timestamp
-    );
+    eventsForSubject.sort((a, b) => a.timestamp - b.timestamp);
+    const reads = eventsForSubject.filter(event => event.method === 'GET');
 
-    const reads = eventsForSubject.filter(
-      event => event.method === 'GET'
-    );
-
-    for (
-      let end = 0, start = 0;
-      end < reads.length;
-      end++
-    ) {
-      while (
-        reads[end].timestamp - reads[start].timestamp >= WINDOW_MS
-      ) {
-        start++;
+    for (let start = 0, end = 0; end < reads.length; end += 1) {
+      while (reads[end].timestamp - reads[start].timestamp >= WINDOW_MS) {
+        start += 1;
       }
 
-      if (end - start + 1 <= READ_THRESHOLD) {
+      const count = end - start + 1;
+      if (count <= READ_THRESHOLD) continue;
+
+      const window = reads.slice(start, end + 1);
+      const hasUnusualNetwork = window.some(event => event.network === 'unusual');
+      const devices = new Set(window.map(event => event.deviceId).filter(Boolean));
+
+      // 제안은 조회 폭주 + 비정상 네트워크 + 단일 식별 기기가 함께 확인될 때만 냅니다.
+      if (!hasUnusualNetwork || devices.size !== 1 || window.some(event => !event.deviceId)) {
         continue;
       }
 
-      const devices = new Set();
-      for (let i = start; i <= end; i++) {
-        if (reads[i].deviceId) devices.add(reads[i].deviceId);
-      }
-
-      const result = {
+      return {
         action: 'propose_revocation',
-        reasonCode: 'burst_read',
+        reasonCode: 'compound_network_burst',
         subject,
+        deviceId: [...devices][0],
       };
-
-      if (devices.size === 1) {
-        result.deviceId = [...devices][0];
-      }
-
-      return result;
     }
   }
 
