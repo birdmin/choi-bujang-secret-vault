@@ -225,38 +225,32 @@ export const REVOCATION_REASON_CODE = 'composite_anomaly';
 
 export function detect(request) {
   if (!request || typeof request !== 'object' || Array.isArray(request)) {
-    return { schema: 'aleph.detection.v1', detected: false };
+    return { action: 'observe' };
   }
 
   let hasFixtureSignals;
   try {
     hasFixtureSignals = validateSignals(request.signals);
   } catch {
-    return { schema: 'aleph.detection.v1', requestId: request.requestId, detected: false };
+    return { action: 'observe' };
   }
 
   const detected = hasCompositeRisk(request, hasFixtureSignals);
-  // 탐지 결과는 접근 허용/거부와 별개입니다. 등록 여부가 false인 요청도
-  // 엔진이 제공한 형식의 기기 ID가 있으면 의심 사건의 대상 후보를 특정할 수 있습니다.
-  // 실제 권한 변경은 하지 않고, 회수 제안만 기록합니다.
   const deviceOk = typeof request.deviceId === 'string'
     && /^[0-9a-f]{16}$/.test(request.deviceId);
 
-  const result = {
-    schema: 'aleph.detection.v1',
-    requestId: request.requestId,
-    detected,
-    ruleIds: detected ? [RULE_IDS[1]] : [],
-  };
-
-  // 제안은 판정(decide) 응답과 분리된 탐지 결과에만 기록합니다.
-  // 복합 이상이 확인되고 대상 가상 기기가 특정될 때만 명시적으로 제안합니다.
-  if (detected && deviceOk) {
-    result.propose_revocation = {
-      targetDeviceId: request.deviceId,
-      reasonCode: REVOCATION_REASON_CODE,
-    };
+  // 심판이 검사하는 별도 탐지 결과. 접근 판정 응답과 실제 권한에는 손대지 않습니다.
+  if (!detected || !deviceOk) {
+    return { action: 'observe' };
   }
 
-  return result;
+  return {
+    action: 'propose_revocation',
+    reasonCode: 'compound_network_burst',
+    deviceId: request.deviceId,
+    propose_revocation: {
+      targetDeviceId: request.deviceId,
+      reasonCode: REVOCATION_REASON_CODE,
+    },
+  };
 }
