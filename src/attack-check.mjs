@@ -32,8 +32,16 @@ export async function runAttackChecks(config) {
   }
 
   const results = [];
+  const checkedFetch = async (label, url, options = {}) => {
+    try {
+      return await fetch(url, options);
+    } catch (error) {
+      const cause = error?.cause?.code || error?.cause?.message || error?.message || 'unknown';
+      throw new Error(`공격 점검 요청 실패 [${label}] (${new URL(url).origin}): ${cause}`);
+    }
+  };
 
-  const memoResponse = await fetch(new URL('/api/notes', app), {
+  const memoResponse = await checkedFetch('anonymous_memo_list_read', new URL('/api/notes', app), {
     redirect: 'error',
     signal: AbortSignal.timeout(10000),
   });
@@ -53,7 +61,7 @@ export async function runAttackChecks(config) {
       : '비로그인 /api/notes가 예상 상태가 아님 (HTTP ' + memoResponse.status + ', JSON ' + (memoJson !== null ? '확인' : '없음') + ')',
   });
 
-  const alephResponse = await fetch(new URL('/aleph.json', app), {
+  const alephResponse = await checkedFetch('anonymous_runtime_config_read', new URL('/aleph.json', app), {
     redirect: 'error',
     signal: AbortSignal.timeout(10000),
   });
@@ -86,7 +94,7 @@ export async function runAttackChecks(config) {
       : '배포된 /aleph.json의 배포 식별 정보가 설정과 일치하지 않음 (HTTP ' + alephResponse.status + ')',
   });
 
-  const indexResponse = await fetch(new URL('/', app), {
+  const indexResponse = await checkedFetch('response_header_nosniff', new URL('/', app), {
     redirect: 'error',
     signal: AbortSignal.timeout(10000),
   });
@@ -122,7 +130,7 @@ export async function runAttackChecks(config) {
     throw new Error('원본 API 주소에는 HTTPS 경로만 기록해야 합니다.');
   }
 
-  const originalApiResponse = await fetch(originalApi, {
+  const originalApiResponse = await checkedFetch('original_api_direct_read', originalApi, {
     redirect: 'error',
     signal: AbortSignal.timeout(10000),
   });
