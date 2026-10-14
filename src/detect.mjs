@@ -110,7 +110,7 @@ export function detect(events) {
         ruleIds: ['compound_network_burst'],
         propose_revocation: {
           targetDeviceId: confirmedDeviceId,
-          reasonCode: 'burst_read',
+          reasonCode: 'composite_anomaly',
         },
       };
     }
