@@ -1,0 +1,28 @@
+{
+  "schema": "aleph.safe-policy-snapshot.v1",
+  "version": "stage8-verified-2f6c695",
+  "sourceCommit": "2f6c6954e3287f9a63c2104a41934100fda718ea",
+  "scope": [
+    "allowedRoutes",
+    "ruleIds",
+    "resourceIds"
+  ],
+  "policy": {
+    "allowedRoutes": [
+      "GET /api/notes/:id",
+      "GET /api/class-notices",
+      "GET /api/class-notices/:id"
+    ],
+    "ruleIds": [
+      "device_registered",
+      "step_up_required",
+      "resource_route_allowed",
+      "resource_route_denied"
+    ],
+    "resourceIds": {
+      "studentMemos": "student-memos",
+      "instructorNotices": "instructor-notices"
+    }
+  },
+  "sha256": "a526291eb3b94abacbd7528f916d27d66a75aafb5ad616d1a85861e8f3ee06f1"
+}
