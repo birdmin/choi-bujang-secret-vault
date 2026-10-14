@@ -249,7 +249,7 @@ export function detect(request) {
     reasonCode: 'compound_network_burst',
     deviceId: request.deviceId,
     propose_revocation: {
-      targetDeviceId: request.deviceId,
+      deviceId: request.deviceId,
       reasonCode: REVOCATION_REASON_CODE,
     },
   };
