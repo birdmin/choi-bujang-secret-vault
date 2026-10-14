@@ -42,7 +42,7 @@ const expectedRevocation = {
   deviceId,
   propose_revocation: {
     targetDeviceId: deviceId,
-    reasonCode: 'compound_network_burst',
+    reasonCode: 'composite_anomaly',
   },
 };
 
@@ -88,7 +88,7 @@ const cases = [
       deviceId: 'bbbbbbbbbbbbbbbb',
       propose_revocation: {
         targetDeviceId: 'bbbbbbbbbbbbbbbb',
-        reasonCode: 'compound_network_burst',
+        reasonCode: 'composite_anomaly',
       },
     },
   },
