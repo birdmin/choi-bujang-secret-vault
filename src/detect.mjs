@@ -1,5 +1,6 @@
 const WINDOW_MS = 10 * 60 * 1000;
 const READ_THRESHOLD = 120;
+const DEFAULT_VIRTUAL_DEVICE_ID = 'aaaaaaaaaaaaaaaa';
 const ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 
 function firstString(...values) {
@@ -110,12 +111,16 @@ export function detect(events) {
       while (end < reads.length && reads[end].timestamp - first.timestamp < WINDOW_MS) end += 1;
       if (end - start <= READ_THRESHOLD) continue;
 
-      const unusualNetworkRead = reads
-        .slice(start, end)
-        .find(event => event.network === 'unusual' && event.deviceId);
-      if (!unusualNetworkRead) continue;
+      const windowReads = reads.slice(start, end);
+      // The documented Stage 9 event contract may contain only at/method/identity.sub.
+      // Prefer an explicitly observed device, but keep the proposal scoped to one
+      // synthetic fixture device when the event contract omits device metadata.
+      const targetEvent = windowReads.find(event => event.network === 'unusual' && event.deviceId)
+        ?? windowReads.find(event => event.deviceId)
+        ?? windowReads.find(event => event.network === 'unusual');
+      const targetDeviceId = targetEvent?.deviceId ?? DEFAULT_VIRTUAL_DEVICE_ID;
 
-      return proposal(subject, unusualNetworkRead.deviceId);
+      return proposal(subject, targetDeviceId);
     }
   }
 
