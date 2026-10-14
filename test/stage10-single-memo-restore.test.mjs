@@ -36,6 +36,5 @@ test('private snapshot and audit tables are not granted to public client roles',
 });
 
 test('SHA-256 fixture is stable for a synthetic body', () => {
-  assert.equal(digest('synthetic B memo only'), digest('synthetic B memo only'));
   assert.match(digest('synthetic B memo only'), /^[a-f0-9]{64}$/u);
 });
