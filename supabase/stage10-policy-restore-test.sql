@@ -52,8 +52,9 @@ begin
   select count(*) into a_sees_own_after from public.memos where owner_id = a;
   execute 'reset role';
 
-  -- 6) 시험용 권한 회수(5단계 상태로), 결과 기록
-  execute 'revoke all on table public.memos from authenticated';
+  -- 6) restore the expected table grants after the policy test.
+  -- Keep the 5-stage direct-access boundary: no table grants to browser roles.
+  execute 'revoke all on table public.memos from public, anon, authenticated';
   ok := restored->>'status' = 'restored' and b_sees_a_after = 0 and a_sees_own_after > 0;
   insert into public.memos_policy_audit (action, version, result, detail)
   values ('policy_restore_test', 's4-memos-rls-v1', case when ok then 'pass' else 'fail' end,
