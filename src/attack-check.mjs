@@ -37,6 +37,21 @@ export async function runAttackChecks(config) {
       return await fetch(url, options);
     } catch (error) {
       const cause = error?.cause?.code || error?.cause?.message || error?.message || 'unknown';
+      try {
+        const probe = await fetch(url, { ...options, redirect: 'manual' });
+        const location = probe.headers.get('location');
+        if (probe.status >= 300 && probe.status < 400) {
+          let destination = '확인 불가';
+          try {
+            destination = location ? new URL(location, url).origin + new URL(location, url).pathname : 'Location 헤더 없음';
+          } catch {}
+          throw new Error(`HTTP ${probe.status}, redirect target: ${destination}`);
+        }
+      } catch (probeError) {
+        if (probeError.message?.startsWith('HTTP ')) {
+          throw new Error(`공격 점검 요청 실패 [${label}] (${new URL(url).origin}): ${probeError.message}`);
+        }
+      }
       throw new Error(`공격 점검 요청 실패 [${label}] (${new URL(url).origin}): ${cause}`);
     }
   };
