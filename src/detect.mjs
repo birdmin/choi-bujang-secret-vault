@@ -86,7 +86,7 @@ export function detect(events) {
 
       // 별도 제안에는 대상 가상 기기 ID와 사유 코드만 포함하며 실제 회수는 하지 않습니다.
       const proposal = {
-        deviceId: unusualNetworkRead.deviceId,
+        targetDeviceId: unusualNetworkRead.deviceId,
         reasonCode: 'composite_anomaly',
       };
 
