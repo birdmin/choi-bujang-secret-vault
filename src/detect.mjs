@@ -15,8 +15,10 @@ function readEvent(event) {
   }
 
   const at = event.at;
-  const method = event.method;
-  const sub = event.identity?.sub;
+  // 심판 사건은 가명 주체를 subjectId로 기록할 수 있고,
+  // 로컬 예제는 identity.sub를 사용하므로 두 형식을 모두 읽습니다.
+  const method = event.method ?? event.requestType;
+  const sub = event.identity?.sub ?? event.subjectId;
 
   if (
     typeof at !== 'string' ||
@@ -103,7 +105,7 @@ export function detect(events) {
         subject,
         deviceId: unusualNetworkRead.deviceId,
         propose_revocation: {
-          deviceId: unusualNetworkRead.deviceId,
+          targetDeviceId: unusualNetworkRead.deviceId,
           reasonCode: 'composite_anomaly',
         },
       };
