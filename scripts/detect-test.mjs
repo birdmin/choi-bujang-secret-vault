@@ -37,7 +37,7 @@ const expectedRevocation = {
   subject,
   deviceId,
   propose_revocation: {
-    targetDeviceId: deviceId,
+    deviceId,
     reasonCode: 'composite_anomaly',
   },
 };
@@ -80,7 +80,7 @@ const cases = [
       subject,
       deviceId: 'bbbbbbbbbbbbbbbb',
       propose_revocation: {
-        targetDeviceId: 'bbbbbbbbbbbbbbbb',
+        deviceId: 'bbbbbbbbbbbbbbbb',
         reasonCode: 'composite_anomaly',
       },
     },
