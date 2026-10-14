@@ -19,15 +19,15 @@ function reads(count, extra = {}, intervalSeconds = 2) {
 }
 
 test('정상 조회는 observe로 유지한다', () => {
-  assert.deepEqual(detectEvents(reads(30, { network: 'usual', deviceId })), { action: 'observe' });
+  assert.deepEqual(detectEvents(reads(30, { network: 'usual', deviceId })), { schema: 'aleph.detection.v1', detected: false, ruleIds: [] });
 });
 
 test('조회 폭주와 비정상 네트워크, 확인된 기기 ID가 함께 있으면 회수 제안을 낸다', () => {
   assert.deepEqual(detectEvents(reads(121, { network: 'unusual', deviceId })), {
-    action: 'propose_revocation',
-    reasonCode: 'compound_network_burst',
+    schema: 'aleph.detection.v1',
+    detected: true,
     subject,
-    deviceId,
+    ruleIds: ['compound_network_burst'],
     propose_revocation: {
       targetDeviceId: deviceId,
       reasonCode: 'composite_anomaly',
@@ -36,15 +36,15 @@ test('조회 폭주와 비정상 네트워크, 확인된 기기 ID가 함께 있
 });
 
 test('120건 이하이면 회수 제안을 내지 않는다', () => {
-  assert.deepEqual(detectEvents(reads(120, { network: 'unusual', deviceId })), { action: 'observe' });
+  assert.deepEqual(detectEvents(reads(120, { network: 'unusual', deviceId })), { schema: 'aleph.detection.v1', detected: false, ruleIds: [] });
 });
 
 test('다량 조회만으로 회수 제안을 내지 않는다', () => {
-  assert.deepEqual(detectEvents(reads(121)), { action: 'observe' });
+  assert.deepEqual(detectEvents(reads(121)), { schema: 'aleph.detection.v1', detected: false, ruleIds: [] });
 });
 
 test('기기 식별자가 없으면 회수 제안을 내지 않는다', () => {
-  assert.deepEqual(detectEvents(reads(121, { network: 'unusual' })), { action: 'observe' });
+  assert.deepEqual(detectEvents(reads(121, { network: 'unusual' })), { schema: 'aleph.detection.v1', detected: false, ruleIds: [] });
 });
 
 test('다른 조회의 기기 ID가 달라도 이상 네트워크 사건의 기기를 제안한다', () => {
@@ -53,10 +53,10 @@ test('다른 조회의 기기 ID가 달라도 이상 네트워크 사건의 기�
     ...reads(1, { network: 'unusual', deviceId: 'bbbbbbbbbbbbbbbb' }),
   ];
   assert.deepEqual(detectEvents(events), {
-    action: 'propose_revocation',
-    reasonCode: 'compound_network_burst',
+    schema: 'aleph.detection.v1',
+    detected: true,
     subject,
-    deviceId: 'bbbbbbbbbbbbbbbb',
+    ruleIds: ['compound_network_burst'],
     propose_revocation: {
       targetDeviceId: 'bbbbbbbbbbbbbbbb',
       reasonCode: 'composite_anomaly',
@@ -65,7 +65,7 @@ test('다른 조회의 기기 ID가 달라도 이상 네트워크 사건의 기�
 });
 
 test('지역 정보만으로는 회수 제안을 내지 않는다', () => {
-  assert.deepEqual(detectEvents(reads(121, { region: 'foreign', deviceId })), { action: 'observe' });
+  assert.deepEqual(detectEvents(reads(121, { region: 'foreign', deviceId })), { schema: 'aleph.detection.v1', detected: false, ruleIds: [] });
 });
 
 test('다른 사용자의 조회는 합산하지 않는다', () => {
@@ -73,11 +73,11 @@ test('다른 사용자의 조회는 합산하지 않는다', () => {
     ...reads(100, { network: 'unusual', deviceId }),
     ...reads(100, { network: 'unusual', deviceId, identity: { sub: 'other_fixture' } }),
   ];
-  assert.deepEqual(detectEvents(events), { action: 'observe' });
+  assert.deepEqual(detectEvents(events), { schema: 'aleph.detection.v1', detected: false, ruleIds: [] });
 });
 
 test('10분 밖으로 흩어진 조회는 합산하지 않는다', () => {
-  assert.deepEqual(detectEvents(reads(200, { network: 'unusual', deviceId }, 7)), { action: 'observe' });
+  assert.deepEqual(detectEvents(reads(200, { network: 'unusual', deviceId }, 7)), { schema: 'aleph.detection.v1', detected: false, ruleIds: [] });
 });
 
 
