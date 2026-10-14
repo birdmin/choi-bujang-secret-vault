@@ -29,7 +29,7 @@ test('조회 폭주와 비정상 네트워크, 확인된 기기 ID가 함께 있
     subject,
     deviceId,
     propose_revocation: {
-      deviceId,
+      targetDeviceId: deviceId,
       reasonCode: 'composite_anomaly',
     },
   });
