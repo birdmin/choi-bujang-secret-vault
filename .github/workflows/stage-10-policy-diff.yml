@@ -1,0 +1,28 @@
+name: Stage 10 safe policy diff preview
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  policy-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install project dependencies
+        run: npm ci
+      - name: Test safe policy snapshot verification and diff
+        run: npm run test:stage10
+      - name: Preview policy differences only
+        run: npm run policy:diff
