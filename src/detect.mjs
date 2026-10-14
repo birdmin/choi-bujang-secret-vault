@@ -103,7 +103,7 @@ export function detect(events) {
         subject,
         deviceId: unusualNetworkRead.deviceId,
         propose_revocation: {
-          targetDeviceId: unusualNetworkRead.deviceId,
+          deviceId: unusualNetworkRead.deviceId,
           reasonCode: 'composite_anomaly',
         },
       };
