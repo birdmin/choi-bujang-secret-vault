@@ -41,13 +41,10 @@ function routeAllowed(request) {
     || typeof request.method !== 'string'
     || typeof request.path !== 'string'
     || typeof request.route !== 'string') return false;
-
-  // 쿼리로 기능을 선택하지 못하게 하고, 경로의 모양과 서비스·메서드를 함께 확인합니다.
   if (request.path.includes('?') || request.path.includes('#')) return false;
   if (request.queryLength !== 0) return false;
 
   const { memo, classNoticeCollection, classNoticeDetail, instructorMaterial } = ROUTE_POLICY;
-
   if (instructorMaterial.service === request.service
     && instructorMaterial.path.test(request.path)) return false;
 
@@ -82,55 +79,35 @@ function validateSignals(signals) {
   if (!signals || typeof signals !== 'object' || Array.isArray(signals)) {
     throw new TypeError('invalid_signals');
   }
-
   if (Object.keys(signals).sort().join(',') !== 'hour,network,region,source') {
     throw new TypeError('invalid_signals');
   }
-
   if (signals.source === 'none') {
-    if (
-      signals.region !== 'unknown'
+    if (signals.region !== 'unknown'
       || signals.network !== 'unknown'
-      || !(signals.hour === null || signals.hour === 'unknown')
-    ) {
+      || !(signals.hour === null || signals.hour === 'unknown')) {
       throw new TypeError('untrusted_signals_source');
     }
-
     return false;
   }
-
   if (signals.source !== 'judge_fixture') {
     throw new TypeError('untrusted_signals_source');
   }
-
-  if (
-    typeof signals.region !== 'string'
+  if (typeof signals.region !== 'string'
     || signals.region.length === 0
     || typeof signals.network !== 'string'
     || signals.network.length === 0
     || !Number.isInteger(signals.hour)
     || signals.hour < 0
-    || signals.hour > 23
-  ) {
+    || signals.hour > 23) {
     throw new TypeError('invalid_signals');
   }
-
   return true;
 }
 
 function hasCompositeRisk(request, hasFixtureSignals) {
-  // 실제 요청의 브라우저 제공 위치·네트워크·시각은
-  // 위험 판정의 근거로 사용하지 않습니다.
-  if (!hasFixtureSignals) {
-    return false;
-  }
-
+  if (!hasFixtureSignals) return false;
   const { network } = request.signals;
-
-  // 낯선 네트워크
-  const unfamiliarNetwork = network === 'unusual';
-
-  // 엔진이 전달한 risk_signal 사건 중 최근 5분 이내 10건 이상
   const bulkReading = Array.isArray(request.recentEvents)
     && request.recentEvents.some(event =>
       event
@@ -141,15 +118,10 @@ function hasCompositeRisk(request, hasFixtureSignals) {
       && Number.isInteger(event.count)
       && event.count >= 10
     );
-
-  // 낯선 네트워크와 갑작스러운 다량 조회가 함께 있을 때만 복합 이상 접속으로 판정합니다.
-  // 지역 하나만으로는 확정하지 않으며, 지역은 판정 조건에 넣지 않습니다.
-  return unfamiliarNetwork && bulkReading;
+  return network === 'unusual' && bulkReading;
 }
 
 function hasRecentVerifiedStepUp(stepUp) {
-  // 엔진이 확인한 최근 재인증만 인정합니다.
-  // verified 값은 브라우저에서 임의로 전달된 값을 신뢰하면 안 됩니다.
   return Boolean(
     stepUp
     && stepUp.verified === true
@@ -163,18 +135,12 @@ export async function decide(request) {
   if (!request || typeof request !== 'object' || Array.isArray(request)) {
     throw new TypeError('invalid_request');
   }
-
-  // 구역 경로 정책을 먼저 적용합니다. 요청에는 역할이 없으므로 강사 권한을 추정하지 않습니다.
-  if (!routeAllowed(request)) {
-    return routeDecision(request, false);
-  }
+  if (!routeAllowed(request)) return routeDecision(request, false);
 
   let hasFixtureSignals;
   try {
     hasFixtureSignals = validateSignals(request.signals);
   } catch {
-    // 계약에 맞지 않거나 신뢰할 수 없는 신호는 허용하지 않고 추가 확인으로 보냅니다.
-    // 기존 등록된 RULE_IDS와 허용된 reasonCode만 사용합니다.
     return {
       schema: 'aleph.decision.v1',
       requestId: request.requestId,
@@ -184,7 +150,6 @@ export async function decide(request) {
     };
   }
 
-  // 기존 기기 등록 규칙을 유지합니다.
   if (request.deviceRegistered !== true) {
     return {
       schema: 'aleph.decision.v1',
@@ -197,8 +162,6 @@ export async function decide(request) {
 
   const compositeRisk = hasCompositeRisk(request, hasFixtureSignals);
   const verifiedStepUp = hasRecentVerifiedStepUp(request.stepUp);
-
-  // 복합 이상 접속은 유효한 최근 재인증이 없으면 추가 확인합니다.
   if (compositeRisk && !verifiedStepUp) {
     return {
       schema: 'aleph.decision.v1',
@@ -209,7 +172,6 @@ export async function decide(request) {
     };
   }
 
-  // 정상 접속 또는 재확인을 마친 복합 이상 접속은 허용합니다.
   return {
     schema: 'aleph.decision.v1',
     requestId: request.requestId,
@@ -219,17 +181,15 @@ export async function decide(request) {
   };
 }
 
-// 별도 탐지 결과입니다. decide()의 5개 이름 응답은 바꾸지 않습니다.
-// 회수 API는 만들지 않고, 회수 "제안"만 대상 기기 한 개와 이유 코드로 남깁니다.
 export const REVOCATION_REASON_CODE = 'composite_anomaly';
 
+// 별도 탐지 결과입니다. decide()의 5개 이름 응답은 바꾸지 않습니다.
+// 실제 회수 API 없이, 가상 기기 하나와 이유 코드만 제안합니다.
 export function detect(request) {
   if (!request || typeof request !== 'object' || Array.isArray(request)) {
     return { action: 'observe' };
   }
 
-  // 탐지 결과는 접근 판정과 별도입니다. decide()의 신뢰 신호 검증을
-  // 우회하거나 바꾸지 않고, 합성 사건의 복합 위험 조건만 독립적으로 확인합니다.
   const network = request.signals?.network ?? request.network;
   const bulkReading = Array.isArray(request.recentEvents)
     && request.recentEvents.some(event =>
@@ -245,21 +205,15 @@ export function detect(request) {
   const deviceOk = typeof request.deviceId === 'string'
     && /^[0-9a-f]{16}$/.test(request.deviceId);
 
-  // 정상 사건이나 대상 기기를 특정할 수 없는 사건에는 제안을 내지 않습니다.
-  if (!detected || !deviceOk) {
-    return { action: 'observe' };
-  }
-
-  // 별도 결과에는 가상 기기 한 개와 이유 코드만 넣습니다. 실제 회수는 하지 않습니다.
-  const proposal = {
-    targetDeviceId: request.deviceId,
-    reasonCode: REVOCATION_REASON_CODE,
-  };
+  if (!detected || !deviceOk) return { action: 'observe' };
 
   return {
     action: 'propose_revocation',
     reasonCode: 'compound_network_burst',
     deviceId: request.deviceId,
-    propose_revocation: proposal,
+    propose_revocation: {
+      deviceId: request.deviceId,
+      reasonCode: REVOCATION_REASON_CODE,
+    },
   };
 }
