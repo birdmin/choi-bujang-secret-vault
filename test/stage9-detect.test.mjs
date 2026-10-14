@@ -35,6 +35,23 @@ test('조회 폭주와 비정상 네트워크, 확인된 기기 ID가 함께 있
   });
 });
 
+
+test('심판 사건 형식의 subjectId와 requestType도 복합 의심 탐지에 사용한다', () => {
+  const judgeEvents = reads(121, { network: 'unusual', deviceId }).map((event) => ({
+    at: event.at,
+    requestType: event.method,
+    subjectId: event.identity.sub,
+    network: event.network,
+    deviceId: event.deviceId,
+  }));
+  const result = detectEvents(judgeEvents);
+  assert.equal(result.action, 'propose_revocation');
+  assert.deepEqual(result.propose_revocation, {
+    targetDeviceId: deviceId,
+    reasonCode: 'composite_anomaly',
+  });
+});
+
 test('120건 이하이면 회수 제안을 내지 않는다', () => {
   assert.deepEqual(detectEvents(reads(120, { network: 'unusual', deviceId })), { action: 'observe' });
 });
@@ -58,7 +75,7 @@ test('다른 조회의 기기 ID가 달라도 이상 네트워크 사건의 기�
     subject,
     deviceId: 'bbbbbbbbbbbbbbbb',
     propose_revocation: {
-      deviceId: 'bbbbbbbbbbbbbbbb',
+      targetDeviceId: 'bbbbbbbbbbbbbbbb',
       reasonCode: 'composite_anomaly',
     },
   });
@@ -88,7 +105,7 @@ test('판정기 별도 탐지 결과는 복합 의심 사건에 회수 제안을
     reasonCode: 'compound_network_burst',
     deviceId: suspicious.deviceId,
     propose_revocation: {
-      deviceId: suspicious.deviceId,
+      targetDeviceId: suspicious.deviceId,
       reasonCode: 'composite_anomaly',
     },
   });
