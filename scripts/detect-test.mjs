@@ -36,10 +36,10 @@ const suspicious = {
 };
 
 const expectedRevocation = {
-  schema: 'aleph.detection.v1',
-  detected: true,
+  action: 'propose_revocation',
+  reasonCode: 'compound_network_burst',
   subject,
-  ruleIds: ['compound_network_burst'],
+  deviceId,
   propose_revocation: {
     targetDeviceId: deviceId,
     reasonCode: 'composite_anomaly',
@@ -53,12 +53,12 @@ const cases = [
       network: 'usual',
       deviceId,
     }),
-    expected: { schema: 'aleph.detection.v1', detected: false, ruleIds: [] },
+    expected: { action: 'observe' },
   },
   {
     name: '10분 안에 120건',
     events: reads(120, suspicious),
-    expected: { schema: 'aleph.detection.v1', detected: false, ruleIds: [] },
+    expected: { action: 'observe' },
   },
   {
     name: '10분 안에 121건 복합 의심',
@@ -73,7 +73,7 @@ const cases = [
   {
     name: '다량 조회만으로는 회수하지 않음',
     events: reads(121),
-    expected: { schema: 'aleph.detection.v1', detected: false, ruleIds: [] },
+    expected: { action: 'observe' },
   },
   {
     name: '다른 조회에 기기 ID가 섞여도 이상 네트워크 사건의 기기를 제안',
@@ -82,10 +82,10 @@ const cases = [
       ...reads(1, { network: 'unusual', deviceId: 'bbbbbbbbbbbbbbbb' }),
     ],
     expected: {
-      schema: 'aleph.detection.v1',
-      detected: true,
+      action: 'propose_revocation',
+      reasonCode: 'compound_network_burst',
       subject,
-      ruleIds: ['compound_network_burst'],
+      deviceId: 'bbbbbbbbbbbbbbbb',
       propose_revocation: {
         targetDeviceId: 'bbbbbbbbbbbbbbbb',
         reasonCode: 'composite_anomaly',
@@ -98,14 +98,14 @@ const cases = [
       region: 'foreign',
       deviceId,
     }),
-    expected: { schema: 'aleph.detection.v1', detected: false, ruleIds: [] },
+    expected: { action: 'observe' },
   },
   {
     name: '기기 식별자가 없으면 회수하지 않음',
     events: reads(121, {
       network: 'unusual',
     }),
-    expected: { schema: 'aleph.detection.v1', detected: false, ruleIds: [] },
+    expected: { action: 'observe' },
   },
   {
     name: '서로 다른 사용자 각 100건',
@@ -116,7 +116,7 @@ const cases = [
         owner: 'other_fixture',
       }),
     ].sort((a, b) => a.at.localeCompare(b.at)),
-    expected: { schema: 'aleph.detection.v1', detected: false, ruleIds: [] },
+    expected: { action: 'observe' },
   },
   {
     name: '10분 밖으로 흩어진 조회 200건',
@@ -124,7 +124,7 @@ const cases = [
       ...suspicious,
       intervalSeconds: 7,
     }),
-    expected: { schema: 'aleph.detection.v1', detected: false, ruleIds: [] },
+    expected: { action: 'observe' },
   },
 ];
 
