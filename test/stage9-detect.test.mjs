@@ -57,6 +57,18 @@ test('판정기 별도 탐지는 복합 의심에만 제안을 포함한다', ()
     propose_revocation: { targetDeviceId: suspicious.deviceId, reasonCode: 'composite_anomaly' },
   });
 });
+
+test('탐지기는 엔진의 압축 요청 형식도 별도 결과로 판정한다', () => {
+  const { suspicious, normal } = fixtureRequests();
+  assert.deepEqual(detectEvents(suspicious), {
+    action: 'propose_revocation',
+    reasonCode: 'compound_network_burst',
+    subject: suspicious.subjectId,
+    deviceId: suspicious.deviceId,
+    propose_revocation: { targetDeviceId: suspicious.deviceId, reasonCode: 'composite_anomaly' },
+  });
+  assert.deepEqual(detectEvents(normal), { action: 'observe' });
+});
 test('정상 사건에는 제안 필드가 없다', () => {
   const { normal } = fixtureRequests();
   const result = detectRequest(normal);
