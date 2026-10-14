@@ -167,9 +167,10 @@ GitHub에서는 최신 `main` 브랜치의 파일을 검색하고, 공개 배포
 
 ## 9단계 저장점: 복합 의심 사건과 기기 회수 제안
 
-- `src/detect.mjs`는 접속 판정기 `decide()`와 분리된 탐지 결과를 반환합니다. 같은 가명 주체의 10분 안 GET 조회가 120건을 초과하고, 비정상 네트워크 사건에서 기기 ID가 확인될 때만 `propose_revocation`을 제안합니다.
-- 제안에는 대상 가상 기기 ID와 `composite_anomaly` 이유 코드가 포함됩니다. 정상 조회, 비정상 네트워크만 있는 사건, 정확히 120건, 미확인 기기 및 다른 기기는 회수 제안을 내지 않습니다.
-- 실제 회수 API를 만들거나 기기 권한을 변경하지 않습니다. 실제 회수 여부와 시간은 심판이 확인합니다. `npm run detect:test`는 가상 사건 연습이며 실제 운영 사건 전달이나 심판 판정의 증거가 아닙니다.
+- `src/detect.mjs`는 접속 판정기 `decide()`와 분리된 결과를 반환합니다. 같은 가명 주체의 10분 안 GET 조회가 120건을 초과하고, 해당 구간에서 비정상 네트워크와 기기 ID가 확인될 때만 `action: 'propose_revocation'`을 반환합니다.
+- 복합 의심 결과에는 탐지 규칙 코드 `compound_network_burst`와 별도 `propose_revocation` 객체가 있습니다. 제안 객체에는 대상 가상 기기 한 개와 `composite_anomaly` 사유 코드만 포함합니다. 정상 사건은 `{ action: 'observe' }`를 반환하며 제안 필드를 넣지 않습니다.
+- `src/decider.mjs`의 `detect(request)` 역시 복합 의심 사건에만 제안을 넣고 정상 사건에는 제안 필드를 넣지 않습니다. 기존 `decide(request)` 응답 계약은 변경하지 않습니다.
+- 실제 회수 API를 만들거나 기기 권한을 변경하지 않습니다. `npm run detect:test`는 가상 사건 연습이며 실제 운영 사건 전달이나 심판 판정의 증거가 아닙니다.
 - `aleph.config.json`의 `step`은 9입니다. 기존 `src/decider.mjs`의 응답 계약과 `RULE_IDS`는 이 탐지 제안과 별개로 유지합니다.
 - 제출 전 직접 확인: 복합 의심 사건만 대상·이유 코드 `composite_anomaly`와 대상 기기 ID가 있는 제안을 내는지, 정상 조회, 지역 정보만 있는 사건, 기기 ID가 없는 사건은 회수 제안을 내지 않는지 확인합니다.
 - `docs/DETECT_EVENTS.md`의 계약에 맞춰 회수 제안의 `reasonCode`는 `composite_anomaly`를 사용합니다. `ruleIds`에는 탐지 규칙 `compound_network_burst`를 유지합니다.
