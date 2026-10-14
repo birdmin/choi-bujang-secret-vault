@@ -115,3 +115,19 @@ test('기본 사건 계약의 121건 폭주만으로는 회수 제안을 내지 
   // 조회량만으로 회수 제안을 만들면 복합 의심 조건을 우회하게 된다.
   assert.deepEqual(detectEvents(events), { action: 'observe' });
 });
+
+
+test('판정기 탐지도 중첩 네트워크·기기·사건 별칭에서 제안한다', () => {
+  const result = detectRequest({
+    subjectId: subject,
+    context: { network: 'unusual', deviceId },
+    recentEvents: [{ eventType: 'risk_signal', age_seconds: 60, readCount: 20 }],
+  });
+  assert.deepEqual(result, {
+    action: 'propose_revocation',
+    reasonCode: 'compound_network_burst',
+    subject,
+    deviceId,
+    propose_revocation: { targetDeviceId: deviceId, reasonCode: 'composite_anomaly' },
+  });
+});
