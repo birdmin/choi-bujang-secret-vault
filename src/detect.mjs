@@ -1,6 +1,5 @@
 const WINDOW_MS = 10 * 60 * 1000;
 const READ_THRESHOLD = 120;
-const DEFAULT_VIRTUAL_DEVICE_ID = 'aaaaaaaaaaaaaaaa';
 const ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 
 function firstString(...values) {
