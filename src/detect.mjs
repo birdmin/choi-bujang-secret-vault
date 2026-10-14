@@ -111,15 +111,12 @@ export function detect(events) {
       if (end - start <= READ_THRESHOLD) continue;
 
       const windowReads = reads.slice(start, end);
-      // The documented Stage 9 event contract may contain only at/method/identity.sub.
-      // Prefer an explicitly observed device, but keep the proposal scoped to one
-      // synthetic fixture device when the event contract omits device metadata.
-      const targetEvent = windowReads.find(event => event.network === 'unusual' && event.deviceId)
-        ?? windowReads.find(event => event.deviceId)
-        ?? windowReads.find(event => event.network === 'unusual');
-      const targetDeviceId = targetEvent?.deviceId ?? DEFAULT_VIRTUAL_DEVICE_ID;
+      // A burst alone is not a composite suspicion. Require an explicitly
+      // observed unusual-network signal and its associated virtual device.
+      const targetEvent = windowReads.find(event => event.network === 'unusual' && event.deviceId);
+      if (!targetEvent) continue;
 
-      return proposal(subject, targetDeviceId);
+      return proposal(subject, targetEvent.deviceId);
     }
   }
 
