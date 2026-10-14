@@ -105,8 +105,39 @@ export default async function handler(request, response) {
     return;
   }
 
-  const restoredHash = sha256(snapshot.body);
-  if (!sameHash(restoredHash, snapshot.content_sha256)) {
+  // Re-read the backup immediately before any write. A previously read
+  // snapshot is not sufficient: stop if the stored copy disappeared, changed,
+  // or no longer passes its integrity check.
+  const { data: verifiedSnapshot, error: verifySnapshotError } = await client
+    .from('private_memo_snapshots')
+    .select('memo_id,owner_id,title,body,content_sha256,test_identity')
+    .eq('memo_id', memoId)
+    .eq('test_identity', 'b')
+    .maybeSingle();
+
+  if (verifySnapshotError) {
+    response.status(500).json({ error: 'BACKUP_REREAD_FAILED' });
+    return;
+  }
+  if (!verifiedSnapshot) {
+    response.status(409).json({ error: 'BACKUP_MISSING_ON_REREAD' });
+    return;
+  }
+  if (verifiedSnapshot.memo_id !== snapshot.memo_id
+    || verifiedSnapshot.owner_id !== snapshot.owner_id
+    || verifiedSnapshot.title !== snapshot.title
+    || verifiedSnapshot.body !== snapshot.body
+    || verifiedSnapshot.test_identity !== 'b'
+    || !sameHash(verifiedSnapshot.content_sha256, sha256(verifiedSnapshot.body))
+    || !sameHash(verifiedSnapshot.content_sha256, snapshot.content_sha256)) {
+    response.status(409).json({ error: 'BACKUP_REREAD_INTEGRITY_FAILED' });
+    return;
+  }
+
+  // Use only the freshly re-read and verified backup from this point forward.
+  const backup = verifiedSnapshot;
+  const restoredHash = sha256(backup.body);
+  if (!sameHash(restoredHash, backup.content_sha256)) {
     response.status(409).json({ error: 'MEMO_CONTENT_HASH_MISMATCH' });
     return;
   }
@@ -115,16 +146,16 @@ export default async function handler(request, response) {
   let writeError;
   if (current) {
     const result = await client.from('memos')
-      .update({ title: snapshot.title, body: snapshot.body, owner_id: snapshot.owner_id, updated_at: new Date().toISOString() })
-      .eq('id', snapshot.memo_id)
-      .eq('owner_id', snapshot.owner_id)
+      .update({ title: backup.title, body: backup.body, owner_id: backup.owner_id, updated_at: new Date().toISOString() })
+      .eq('id', backup.memo_id)
+      .eq('owner_id', backup.owner_id)
       .select('id,owner_id,title,body')
       .maybeSingle();
     restored = result.data;
     writeError = result.error;
   } else {
     const result = await client.from('memos')
-      .insert({ id: snapshot.memo_id, owner_id: snapshot.owner_id, title: snapshot.title, body: snapshot.body })
+      .insert({ id: backup.memo_id, owner_id: backup.owner_id, title: backup.title, body: backup.body })
       .select('id,owner_id,title,body')
       .maybeSingle();
     restored = result.data;
@@ -135,8 +166,8 @@ export default async function handler(request, response) {
     response.status(500).json({ error: 'SINGLE_MEMO_RESTORE_FAILED' });
     return;
   }
-  if (restored.id !== snapshot.memo_id || restored.owner_id !== snapshot.owner_id
-    || !sameHash(sha256(restored.body), snapshot.content_sha256)) {
+  if (restored.id !== backup.memo_id || restored.owner_id !== backup.owner_id
+    || !sameHash(sha256(restored.body), backup.content_sha256)) {
     response.status(409).json({ error: 'RESTORED_MEMO_VERIFICATION_FAILED' });
     return;
   }
@@ -144,7 +175,7 @@ export default async function handler(request, response) {
   const { error: auditError } = await client.from('memo_restore_audit').insert({
     memo_id: restored.id,
     owner_id: restored.owner_id,
-    content_sha256: snapshot.content_sha256,
+    content_sha256: backup.content_sha256,
     snapshot_source: 'private_memo_snapshots',
     test_identity: 'b',
     event: 'single_virtual_memo_restored'
