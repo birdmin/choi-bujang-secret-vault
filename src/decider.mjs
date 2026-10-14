@@ -12,10 +12,10 @@ export const RULE_IDS = Object.freeze([
 ]);
 
 const ROUTE_POLICY = Object.freeze({
-  memo: { service: 'notes', method: 'GET', path: /^\\/notes\\/(?!export$)[^/]+$/, route: 'GET /notes/:id' },
-  classNoticeCollection: { service: 'class-notices', method: 'GET', path: /^\\/class-notices$/, route: 'GET /class-notices' },
-  classNoticeDetail: { service: 'class-notices', method: 'GET', path: /^\\/class-notices\\/(?!export$)[^/]+$/, route: 'GET /class-notices/:id' },
-  instructorMaterial: { service: 'instructor-materials', path: /^\\/instructor-materials(?:\\/[^/]+)?$/ },
+  memo: { service: 'notes', method: 'GET', path: /^\/notes\/(?!export$)[^/]+$/, route: 'GET /notes/:id' },
+  classNoticeCollection: { service: 'class-notices', method: 'GET', path: /^\/class-notices$/, route: 'GET /class-notices' },
+  classNoticeDetail: { service: 'class-notices', method: 'GET', path: /^\/class-notices\/(?!export$)[^/]+$/, route: 'GET /class-notices/:id' },
+  instructorMaterial: { service: 'instructor-materials', path: /^\/instructor-materials(?:\/[^/]+)?$/ },
 });
 
 function routeAllowed(request) {
