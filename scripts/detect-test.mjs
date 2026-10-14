@@ -6,11 +6,7 @@ import { isDeepStrictEqual } from 'node:util';
 const START = Date.UTC(2026, 9, 1, 0, 0, 0);
 const subject = 'learner_fixture';
 const deviceId = 'aaaaaaaaaaaaaaaa';
-const notDetected = {
-  schema: 'aleph.detection.v1',
-  detected: false,
-  ruleIds: [],
-};
+const notDetected = { action: 'observe' };
 
 function reads(
   count,
@@ -36,10 +32,10 @@ function reads(
 const suspicious = { network: 'unusual', deviceId };
 
 const expectedRevocation = {
-  schema: 'aleph.detection.v1',
-  detected: true,
+  action: 'propose_revocation',
+  reasonCode: 'compound_network_burst',
   subject,
-  ruleIds: ['compound_network_burst'],
+  deviceId,
   propose_revocation: {
     targetDeviceId: deviceId,
     reasonCode: 'composite_anomaly',
@@ -79,10 +75,10 @@ const cases = [
       ...reads(1, { network: 'unusual', deviceId: 'bbbbbbbbbbbbbbbb' }),
     ],
     expected: {
-      schema: 'aleph.detection.v1',
-      detected: true,
+      action: 'propose_revocation',
+      reasonCode: 'compound_network_burst',
       subject,
-      ruleIds: ['compound_network_burst'],
+      deviceId: 'bbbbbbbbbbbbbbbb',
       propose_revocation: {
         targetDeviceId: 'bbbbbbbbbbbbbbbb',
         reasonCode: 'composite_anomaly',
