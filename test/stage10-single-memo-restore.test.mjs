@@ -23,8 +23,8 @@ test('restore compares ID, owner and SHA-256 before accepting the result', () =>
 });
 
 test('restore writes one target and appends an audit row without delete/truncate logic', () => {
-  assert.match(route, /\.eq\('id', snapshot\.memo_id\)/u);
-  assert.match(route, /\.eq\('owner_id', snapshot\.owner_id\)/u);
+  assert.match(route, /\.eq\('id', backup\.memo_id\)/u);
+  assert.match(route, /\.eq\('owner_id', backup\.owner_id\)/u);
   assert.match(route, /from\('memo_restore_audit'\)\.insert/u);
   assert.doesNotMatch(route, /\.delete\(|truncate\s+table/iu);
 });
