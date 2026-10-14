@@ -221,7 +221,7 @@ export async function decide(request) {
 
 // 별도 탐지 결과입니다. decide()의 5개 이름 응답은 바꾸지 않습니다.
 // 회수 API는 만들지 않고, 회수 "제안"만 대상 기기 한 개와 이유 코드로 남깁니다.
-export const REVOCATION_REASON_CODE = 'composite_anomaly';
+export const REVOCATION_REASON_CODE = 'compound_network_burst';
 
 export function detect(request) {
   if (!request || typeof request !== 'object' || Array.isArray(request)) {
@@ -249,7 +249,10 @@ export function detect(request) {
     ruleIds: detected ? [RULE_IDS[1]] : [],
   };
 
+  // 제안은 판정(decide) 응답과 분리된 탐지 결과에만 기록합니다.
+  // 복합 이상이 확인되고 대상 가상 기기가 특정될 때만 명시적으로 제안합니다.
   if (detected && deviceOk) {
+    result.action = 'propose_revocation';
     result.propose_revocation = {
       targetDeviceId: request.deviceId,
       reasonCode: REVOCATION_REASON_CODE,
