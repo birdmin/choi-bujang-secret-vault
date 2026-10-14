@@ -6,6 +6,11 @@ import { isDeepStrictEqual } from 'node:util';
 const START = Date.UTC(2026, 9, 1, 0, 0, 0);
 const subject = 'learner_fixture';
 const deviceId = 'aaaaaaaaaaaaaaaa';
+const notDetected = {
+  schema: 'aleph.detection.v1',
+  detected: false,
+  ruleIds: [],
+};
 
 function reads(
   count,
@@ -19,9 +24,7 @@ function reads(
   } = {},
 ) {
   return Array.from({ length: count }, (_, index) => ({
-    at: new Date(
-      start + index * intervalSeconds * 1000,
-    ).toISOString(),
+    at: new Date(start + index * intervalSeconds * 1000).toISOString(),
     method: 'GET',
     identity: { sub: owner },
     ...(network === undefined ? {} : { network }),
@@ -30,35 +33,29 @@ function reads(
   }));
 }
 
-const suspicious = {
-  network: 'unusual',
-  deviceId,
-};
+const suspicious = { network: 'unusual', deviceId };
 
 const expectedRevocation = {
-  action: 'propose_revocation',
-  reasonCode: 'compound_network_burst',
+  schema: 'aleph.detection.v1',
+  detected: true,
   subject,
-  deviceId,
+  ruleIds: ['compound_network_burst'],
   propose_revocation: {
     targetDeviceId: deviceId,
-    reasonCode: 'composite_anomaly',
+    reasonCode: 'burst_read',
   },
 };
 
 const cases = [
   {
     name: '정상 조회 30건',
-    events: reads(30, {
-      network: 'usual',
-      deviceId,
-    }),
-    expected: { action: 'observe' },
+    events: reads(30, { network: 'usual', deviceId }),
+    expected: notDetected,
   },
   {
     name: '10분 안에 120건',
     events: reads(120, suspicious),
-    expected: { action: 'observe' },
+    expected: notDetected,
   },
   {
     name: '10분 안에 121건 복합 의심',
@@ -73,108 +70,77 @@ const cases = [
   {
     name: '다량 조회만으로는 회수하지 않음',
     events: reads(121),
-    expected: { action: 'observe' },
+    expected: notDetected,
   },
   {
-    name: '다른 조회에 기기 ID가 섞여도 이상 네트워크 사건의 기기를 제안',
+    name: '이상 네트워크 사건의 기기 한 개만 제안',
     events: [
       ...reads(120, { network: 'usual', deviceId }),
       ...reads(1, { network: 'unusual', deviceId: 'bbbbbbbbbbbbbbbb' }),
     ],
     expected: {
-      action: 'propose_revocation',
-      reasonCode: 'compound_network_burst',
+      schema: 'aleph.detection.v1',
+      detected: true,
       subject,
-      deviceId: 'bbbbbbbbbbbbbbbb',
+      ruleIds: ['compound_network_burst'],
       propose_revocation: {
         targetDeviceId: 'bbbbbbbbbbbbbbbb',
-        reasonCode: 'composite_anomaly',
+        reasonCode: 'burst_read',
       },
     },
   },
   {
     name: '지역 정보만으로는 회수하지 않음',
-    events: reads(121, {
-      region: 'foreign',
-      deviceId,
-    }),
-    expected: { action: 'observe' },
+    events: reads(121, { region: 'foreign', deviceId }),
+    expected: notDetected,
   },
   {
     name: '기기 식별자가 없으면 회수하지 않음',
-    events: reads(121, {
-      network: 'unusual',
-    }),
-    expected: { action: 'observe' },
+    events: reads(121, { network: 'unusual' }),
+    expected: notDetected,
   },
   {
     name: '서로 다른 사용자 각 100건',
     events: [
       ...reads(100, suspicious),
-      ...reads(100, {
-        ...suspicious,
-        owner: 'other_fixture',
-      }),
+      ...reads(100, { ...suspicious, owner: 'other_fixture' }),
     ].sort((a, b) => a.at.localeCompare(b.at)),
-    expected: { action: 'observe' },
+    expected: notDetected,
   },
   {
     name: '10분 밖으로 흩어진 조회 200건',
-    events: reads(200, {
-      ...suspicious,
-      intervalSeconds: 7,
-    }),
-    expected: { action: 'observe' },
+    events: reads(200, { ...suspicious, intervalSeconds: 7 }),
+    expected: notDetected,
   },
 ];
 
 export async function checkDetection(detect) {
   if (typeof detect !== 'function') {
-    throw new TypeError(
-      'src/detect.mjs에서 detect 함수를 내보내야 합니다.',
-    );
+    throw new TypeError('src/detect.mjs에서 detect 함수를 내보내야 합니다.');
   }
 
   const results = [];
-
   for (const item of cases) {
     const actual = await detect(item.events);
-    const passed = isDeepStrictEqual(actual, item.expected);
-
     results.push({
       name: item.name,
-      passed: Boolean(passed),
+      passed: Boolean(isDeepStrictEqual(actual, item.expected)),
     });
   }
-
   return results;
 }
 
-if (
-  process.argv[1] &&
-  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const { detect } = await import('../src/detect.mjs');
     const results = await checkDetection(detect);
-
     for (const item of results) {
-      process.stdout.write(
-        `${item.passed ? '통과' : '확인 필요'} · ${item.name}\n`,
-      );
+      process.stdout.write(`${item.passed ? '통과' : '확인 필요'} · ${item.name}\\n`);
     }
-
-    process.stdout.write(
-      '가상 사건 연습이며 실제 접속 회수나 심판 통과 증거가 아닙니다.\n',
-    );
-
-    if (results.some((item) => !item.passed)) {
-      process.exitCode = 1;
-    }
+    process.stdout.write('가상 사건 연습이며 실제 접속 회수나 심판 통과 증거가 아닙니다.\\n');
+    if (results.some((item) => !item.passed)) process.exitCode = 1;
   } catch (error) {
-    process.stderr.write(
-      `탐지 연습 첫 오류: ${error.message}\n`,
-    );
+    process.stderr.write(`탐지 연습 첫 오류: ${error.message}\\n`);
     process.exitCode = 1;
   }
 }
