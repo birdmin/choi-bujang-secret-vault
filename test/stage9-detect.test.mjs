@@ -75,3 +75,32 @@ test('정상 사건에는 제안 필드가 없다', () => {
   assert.deepEqual(result, { action: 'observe' });
   assert.equal(Object.hasOwn(result, 'propose_revocation'), false);
 });
+
+test('중첩 입력 별칭에서도 단일 기기 회수 제안을 만든다', () => {
+  const events = reads(121, {
+    signals: { network: 'unusual' },
+    device: { id: deviceId },
+  }).map(event => ({
+    timestamp: event.at,
+    request: { method: event.method },
+    subject: subject,
+    signals: event.signals,
+    device: event.device,
+  }));
+  const result = detectEvents(events);
+  assert.equal(result.action, 'propose_revocation');
+  assert.deepEqual(result.propose_revocation, {
+    targetDeviceId: deviceId,
+    reasonCode: 'composite_anomaly',
+  });
+});
+
+test('압축 복합 의심 요청에도 별도 회수 제안을 포함한다', () => {
+  const { suspicious } = fixtureRequests();
+  const result = detectEvents(suspicious);
+  assert.equal(result.action, 'propose_revocation');
+  assert.deepEqual(result.propose_revocation, {
+    targetDeviceId: suspicious.deviceId,
+    reasonCode: 'composite_anomaly',
+  });
+});
