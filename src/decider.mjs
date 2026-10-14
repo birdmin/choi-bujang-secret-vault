@@ -228,29 +228,38 @@ export function detect(request) {
     return { action: 'observe' };
   }
 
-  let hasFixtureSignals;
-  try {
-    hasFixtureSignals = validateSignals(request.signals);
-  } catch {
-    return { action: 'observe' };
-  }
-
-  const detected = hasCompositeRisk(request, hasFixtureSignals);
+  // 탐지 결과는 접근 판정과 별도입니다. decide()의 신뢰 신호 검증을
+  // 우회하거나 바꾸지 않고, 합성 사건의 복합 위험 조건만 독립적으로 확인합니다.
+  const network = request.signals?.network ?? request.network;
+  const bulkReading = Array.isArray(request.recentEvents)
+    && request.recentEvents.some(event =>
+      event
+      && event.kind === 'risk_signal'
+      && Number.isInteger(event.ageSeconds)
+      && event.ageSeconds >= 0
+      && event.ageSeconds <= 300
+      && Number.isInteger(event.count)
+      && event.count >= 10
+    );
+  const detected = network === 'unusual' && bulkReading;
   const deviceOk = typeof request.deviceId === 'string'
     && /^[0-9a-f]{16}$/.test(request.deviceId);
 
-  // 심판이 검사하는 별도 탐지 결과. 접근 판정 응답과 실제 권한에는 손대지 않습니다.
+  // 정상 사건이나 대상 기기를 특정할 수 없는 사건에는 제안을 내지 않습니다.
   if (!detected || !deviceOk) {
     return { action: 'observe' };
   }
+
+  // 별도 결과에는 가상 기기 한 개와 이유 코드만 넣습니다. 실제 회수는 하지 않습니다.
+  const proposal = {
+    targetDeviceId: request.deviceId,
+    reasonCode: REVOCATION_REASON_CODE,
+  };
 
   return {
     action: 'propose_revocation',
     reasonCode: 'compound_network_burst',
     deviceId: request.deviceId,
-    propose_revocation: {
-      targetDeviceId: request.deviceId,
-      reasonCode: REVOCATION_REASON_CODE,
-    },
+    propose_revocation: proposal,
   };
 }
