@@ -104,17 +104,17 @@ export function detect(events) {
       // 같은 주체의 다른 조회에 기기 ID가 없거나 다르다는 이유로 탐지를 취소하지 않습니다.
       const confirmedDeviceId = unusualNetworkRead.deviceId;
       return {
-        action: 'propose_revocation',
-        reasonCode: 'compound_network_burst',
+        schema: 'aleph.detection.v1',
+        detected: true,
         subject,
-        deviceId: confirmedDeviceId,
+        ruleIds: ['compound_network_burst'],
         propose_revocation: {
           targetDeviceId: confirmedDeviceId,
-          reasonCode: 'composite_anomaly',
+          reasonCode: 'burst_read',
         },
       };
     }
   }
 
-  return { action: 'observe' };
+  return { schema: 'aleph.detection.v1', detected: false, ruleIds: [] };
 }
