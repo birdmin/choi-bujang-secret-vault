@@ -18,7 +18,7 @@ test('restore compares ID, owner and SHA-256 before accepting the result', () =>
   assert.match(route, /\.eq\('memo_id', memoId\)/u);
   assert.match(route, /current\.owner_id !== snapshot\.owner_id/u);
   assert.match(route, /sha256\(snapshot\.body\)/u);
-  assert.match(route, /restored\.id !== snapshot\.memo_id/u);
+  assert.match(route, /restored\.id !== backup\.memo_id/u);
   assert.match(route, /sha256\(restored\.body\)/u);
 });
 
