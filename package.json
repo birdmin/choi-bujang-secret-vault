@@ -6,14 +6,15 @@
     "build": "node scripts/build-public.mjs",
     "test:r5": "node --test test/r5.test.mjs",
     "test:package": "node --test test/package-starter.test.mjs",
-    "test:stage10": "node --test test/stage10-policy-diff.test.mjs test/stage10-policy-restore.test.mjs",
+    "test:stage10": "node --test test/stage10-policy-diff.test.mjs test/stage10-policy-restore.test.mjs test/stage10-single-memo-restore.test.mjs",
     "policy:diff": "node scripts/policy-diff.mjs",
     "bundle": "node scripts/bundle.mjs",
     "decider:test": "node scripts/decider-test.mjs",
     "detect:test": "node scripts/detect-test.mjs",
     "fixture:7": "node scripts/fixture-7.mjs",
     "xdr:run": "node scripts/xdr-run.mjs",
-    "policy:restore:test": "node --test test/stage10-policy-restore.test.mjs"
+    "policy:restore:test": "node --test test/stage10-policy-restore.test.mjs",
+    "memo:restore:test": "node --test test/stage10-single-memo-restore.test.mjs"
   },
   "engines": {
     "node": ">=22"
