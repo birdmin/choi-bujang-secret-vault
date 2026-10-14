@@ -1,7 +1,7 @@
 {
   "step": 10,
   "repoUrl": "https://github.com/birdmin/choi-bujang-secret-vault",
-  "publicAppUrl": "https://choi-bujang-secret-vault-ten-coral.vercel.app/",
+  "publicAppUrl": "https://choi-bujang-secret-vault-p206cc2c8-birdmin.vercel.app/",
   "sampleMarker": "SAMPLE_NOTE_1",
   "judgeIssuer": "https://aleph-judge-production.up.railway.app/defense/judge",
   "identityProvider": {
