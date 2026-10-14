@@ -84,10 +84,9 @@ test('10분 밖으로 흩어진 조회는 합산하지 않는다', () => {
 test('판정기 별도 탐지 결과는 복합 의심 사건에 회수 제안을 포함한다', () => {
   const { suspicious } = fixtureRequests();
   assert.deepEqual(detectRequest(suspicious), {
-    schema: 'aleph.detection.v1',
-    requestId: suspicious.requestId,
-    detected: true,
-    ruleIds: ['step_up_required'],
+    action: 'propose_revocation',
+    reasonCode: 'compound_network_burst',
+    deviceId: suspicious.deviceId,
     propose_revocation: {
       targetDeviceId: suspicious.deviceId,
       reasonCode: 'composite_anomaly',
@@ -98,6 +97,6 @@ test('판정기 별도 탐지 결과는 복합 의심 사건에 회수 제안을
 test('판정기 별도 탐지 결과는 정상 사건에 회수 제안을 넣지 않는다', () => {
   const { normal } = fixtureRequests();
   const result = detectRequest(normal);
-  assert.equal(result.detected, false);
+  assert.deepEqual(result, { action: 'observe' });
   assert.equal(Object.hasOwn(result, 'propose_revocation'), false);
 });
