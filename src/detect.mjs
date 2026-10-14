@@ -49,7 +49,41 @@ function readEvent(event) {
 
 const observe = () => ({ action: 'observe' });
 
+function proposal(subject, deviceId) {
+  return {
+    action: 'propose_revocation',
+    reasonCode: 'compound_network_burst',
+    ...(typeof subject === 'string' && subject.length > 0 ? { subject } : {}),
+    deviceId,
+    propose_revocation: {
+      targetDeviceId: deviceId,
+      reasonCode: 'composite_anomaly',
+    },
+  };
+}
+
+function detectCompactRequest(request) {
+  const network = request.signals?.network ?? request.network;
+  const subject = request.subjectId ?? request.identity?.sub;
+  const deviceId = request.deviceId;
+  const bulkReading = Array.isArray(request.recentEvents) && request.recentEvents.some((event) =>
+    event && event.kind === 'risk_signal'
+      && Number.isInteger(event.ageSeconds)
+      && event.ageSeconds >= 0 && event.ageSeconds <= 300
+      && Number.isInteger(event.count) && event.count >= 10);
+
+  if (network !== 'unusual' || !bulkReading
+    || typeof deviceId !== 'string' || !/^[0-9a-f]{16}$/.test(deviceId)) {
+    return observe();
+  }
+
+  return proposal(subject, deviceId);
+}
+
 export function detect(events) {
+  if (events && typeof events === 'object' && !Array.isArray(events)) {
+    return detectCompactRequest(events);
+  }
   if (!Array.isArray(events)) {
     throw new TypeError('invalid_detection_events');
   }
@@ -85,18 +119,7 @@ export function detect(events) {
       if (!unusualNetworkRead || !unusualNetworkRead.deviceId) continue;
 
       // 별도 제안에는 대상 가상 기기 ID와 사유 코드만 포함하며 실제 회수는 하지 않습니다.
-      const proposal = {
-        targetDeviceId: unusualNetworkRead.deviceId,
-        reasonCode: 'composite_anomaly',
-      };
-
-      return {
-        action: 'propose_revocation',
-        reasonCode: 'compound_network_burst',
-        subject,
-        deviceId: unusualNetworkRead.deviceId,
-        propose_revocation: proposal,
-      };
+      return proposal(subject, unusualNetworkRead.deviceId);
     }
   }
 
