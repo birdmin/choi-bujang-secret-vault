@@ -29,7 +29,7 @@ test('조회 폭주와 비정상 네트워크, 확인된 기기 ID가 함께 있
     subject,
     deviceId,
     propose_revocation: {
-      targetDeviceId: deviceId,
+      deviceId,
       reasonCode: 'composite_anomaly',
     },
   });
@@ -58,7 +58,7 @@ test('다른 조회의 기기 ID가 달라도 이상 네트워크 사건의 기�
     subject,
     deviceId: 'bbbbbbbbbbbbbbbb',
     propose_revocation: {
-      targetDeviceId: 'bbbbbbbbbbbbbbbb',
+      deviceId: 'bbbbbbbbbbbbbbbb',
       reasonCode: 'composite_anomaly',
     },
   });
@@ -88,7 +88,7 @@ test('판정기 별도 탐지 결과는 복합 의심 사건에 회수 제안을
     reasonCode: 'compound_network_burst',
     deviceId: suspicious.deviceId,
     propose_revocation: {
-      targetDeviceId: suspicious.deviceId,
+      deviceId: suspicious.deviceId,
       reasonCode: 'composite_anomaly',
     },
   });
