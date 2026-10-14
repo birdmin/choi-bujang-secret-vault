@@ -21,13 +21,13 @@
   subject: 'learner_fixture',
   deviceId: 'aaaaaaaaaaaaaaaa',
   propose_revocation: {
-    targetDeviceId: 'aaaaaaaaaaaaaaaa',
+    deviceId: 'aaaaaaaaaaaaaaaa',
     reasonCode: 'composite_anomaly'
   }
 }
 ```
 
-바깥 `reasonCode`는 탐지 규칙 코드이며, 별도 `propose_revocation` 안에는 대상 가상 기기 한 개와 회수 제안 사유 코드만 들어갑니다. 실제 회수 API를 만들거나 기기 권한을 변경하지 않습니다.
+바깥 `reasonCode`는 탐지 규칙 코드이며, 별도 `propose_revocation` 안에는 가상 기기 ID 한 개와 회수 제안 사유 코드만 들어갑니다. 실제 회수 API를 만들거나 기기 권한을 변경하지 않습니다.
 
 정상 조회, 정확히 120건, 조회 폭주만 있는 사건, 비정상 네트워크 신호가 없는 사건, 비정상 네트워크 사건에서 기기 ID를 확인할 수 없는 경우에는 `{ action: 'observe' }`를 반환하고 회수 제안을 포함하지 않습니다. 지역 정보만으로는 탐지하지 않습니다. 서로 다른 주체의 조회를 합산하지 않으며, 10분 창 밖의 조회도 합산하지 않습니다.
 
