@@ -37,7 +37,7 @@ const expectedRevocation = {
   subject,
   deviceId,
   propose_revocation: {
-    deviceId,
+    targetDeviceId: device,
     reasonCode: 'composite_anomaly',
   },
 };
