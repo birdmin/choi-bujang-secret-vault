@@ -21,7 +21,7 @@
   subject: 'learner_fixture',
   deviceId: 'aaaaaaaaaaaaaaaa',
   propose_revocation: {
-    targetDeviceId: 'aaaaaaaaaaaaaaaa',
+    deviceId: 'aaaaaaaaaaaaaaaa',
     reasonCode: 'composite_anomaly'
   }
 }
