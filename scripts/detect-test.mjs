@@ -80,7 +80,7 @@ const cases = [
       subject,
       deviceId: 'bbbbbbbbbbbbbbbb',
       propose_revocation: {
-        deviceId: 'bbbbbbbbbbbbbbbb',
+        targetDeviceId: 'bbbbbbbbbbbbbbbb',
         reasonCode: 'composite_anomaly',
       },
     },
