@@ -98,16 +98,19 @@ export function detect(events) {
       if (!unusualNetworkRead || !unusualNetworkRead.deviceId) continue;
 
       // 별도 탐지 결과에만 회수 제안을 기록합니다. 실제 권한은 변경하지 않습니다.
+      // 제안은 탐지 결과의 별도 필드로 반환합니다. 대상은 이 사건에서 확인된 가상 기기 하나뿐입니다.
+      const proposal = {
+        targetDeviceId: unusualNetworkRead.deviceId,
+        reasonCode: 'composite_anomaly',
+      };
+
       // 바깥 reasonCode는 탐지 규칙 코드, 안쪽 reasonCode는 제안 사유 코드입니다.
       return {
         action: 'propose_revocation',
         reasonCode: 'compound_network_burst',
         subject,
         deviceId: unusualNetworkRead.deviceId,
-        propose_revocation: {
-          targetDeviceId: unusualNetworkRead.deviceId,
-          reasonCode: 'composite_anomaly',
-        },
+        propose_revocation: proposal,
       };
     }
   }
