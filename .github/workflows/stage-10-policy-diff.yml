@@ -28,3 +28,5 @@ jobs:
         run: npm run policy:diff
       - name: Test confirmed test-policy restoration and access invariants
         run: npm run policy:restore:test
+      - name: Test single virtual memo restore route
+        run: npm run memo:restore:test
