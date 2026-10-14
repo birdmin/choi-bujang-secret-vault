@@ -29,6 +29,24 @@ create table if not exists public.memo_restore_audit (
 alter table public.memo_restore_audit enable row level security;
 revoke all on table public.memo_restore_audit from public, anon, authenticated;
 
+-- Make the verified recovery source append-only: a later request must not be able to
+-- rewrite or delete the pre-incident snapshot after its checksum has been established.
+create or replace function public.private_memo_snapshots_block_change()
+returns trigger
+language plpgsql
+set search_path = ''
+as $
+begin
+  raise exception 'private_memo_snapshots_are_append_only';
+end;
+$;
+
+drop trigger if exists private_memo_snapshots_no_change on public.private_memo_snapshots;
+create trigger private_memo_snapshots_no_change
+before update or delete on public.private_memo_snapshots
+for each row execute function public.private_memo_snapshots_block_change();
+
 -- The endpoint uses the server-only SUPABASE_SECRET_KEY. Never expose it to a browser.
--- Populate private_memo_snapshots with ONE synthetic B-owned test memo, its UUID owner_id,
--- and SHA-256 of the exact UTF-8 body. Do not copy actual student content.
+-- Populate private_memo_snapshots with ONE synthetic B-owned test memo BEFORE the attack,
+-- using its UUID owner_id and SHA-256 of the exact UTF-8 body. Do not copy actual student content.
+-- This migration deliberately does not invent IDs or copy current memo contents as a backup.
