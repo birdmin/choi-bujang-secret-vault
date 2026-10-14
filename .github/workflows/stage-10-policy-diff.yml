@@ -26,3 +26,5 @@ jobs:
         run: npm run test:stage10
       - name: Preview policy differences only
         run: npm run policy:diff
+      - name: Test confirmed test-policy restoration and access invariants
+        run: npm run policy:restore:test
