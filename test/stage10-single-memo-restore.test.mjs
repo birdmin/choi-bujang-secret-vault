@@ -35,6 +35,11 @@ test('private snapshot and audit tables are not granted to public client roles',
   assert.match(migration, /revoke all on table public\.memo_restore_audit from public, anon, authenticated/iu);
 });
 
+test('private recovery snapshots cannot be updated or deleted after capture', () => {
+  assert.match(migration, /create trigger private_memo_snapshots_no_change[\\s\\S]*?before update or delete on public\\.private_memo_snapshots/iu);
+  assert.match(migration, /private_memo_snapshots_are_append_only/u);
+});
+
 test('SHA-256 fixture is stable for a synthetic body', () => {
   assert.match(digest('synthetic B memo only'), /^[a-f0-9]{64}$/u);
 });
