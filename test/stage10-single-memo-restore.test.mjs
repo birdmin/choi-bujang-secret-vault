@@ -36,7 +36,7 @@ test('private snapshot and audit tables are not granted to public client roles',
 });
 
 test('private recovery snapshots cannot be updated or deleted after capture', () => {
-  assert.match(migration, /create trigger private_memo_snapshots_no_change[\\s\\S]*?before update or delete on public\\.private_memo_snapshots/iu);
+  assert.match(migration, /create trigger private_memo_snapshots_no_change[\s\S]*?before update or delete on public\.private_memo_snapshots/iu);
   assert.match(migration, /private_memo_snapshots_are_append_only/u);
 });
 
