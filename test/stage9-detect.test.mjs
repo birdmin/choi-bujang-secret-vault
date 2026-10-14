@@ -104,3 +104,17 @@ test('압축 복합 의심 요청에도 별도 회수 제안을 포함한다', (
     reasonCode: 'composite_anomaly',
   });
 });
+
+test('기본 사건 계약만 있는 121건 폭주에도 단일 가상 기기 제안을 반환한다', () => {
+  const events = reads(121).map(event => ({
+    at: event.at,
+    method: event.method,
+    identity: event.identity,
+  }));
+  const result = detectEvents(events);
+  assert.equal(result.action, 'propose_revocation');
+  assert.deepEqual(result.propose_revocation, {
+    targetDeviceId: 'aaaaaaaaaaaaaaaa',
+    reasonCode: 'composite_anomaly',
+  });
+});
