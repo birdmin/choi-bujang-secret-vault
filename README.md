@@ -176,3 +176,27 @@ GitHub에서는 최신 `main` 브랜치의 파일을 검색하고, 공개 배포
 - `docs/DETECT_EVENTS.md`의 계약에 맞춰 회수 제안의 `reasonCode`는 `composite_anomaly`를 사용합니다. `ruleIds`에는 탐지 규칙 `compound_network_burst`를 유지합니다.
 - 수정 파일: `src/detect.mjs`, `scripts/detect-test.mjs`. GitHub 웹 편집으로 커밋했으며, 이 환경에서는 로컬 `git status`와 `npm run bundle`을 실행하지 않았으므로 탐지 테스트·제출 묶음 생성은 미확인입니다.
 - 제출 묶음은 GitHub Actions의 **Submission bundle check**에서 `npm ci` 후 `npm run bundle`을 실행해 확인하도록 설정했습니다. 실행 로그와 생성된 artifact를 확인하기 전에는 번들 생성 성공으로 간주하지 않습니다.
+
+## 10단계 제작 3: B 가상 메모 한 건 복원
+
+### 서비스·경로
+- 서비스: 학생 가상 메모(`student-memos`)
+- 복구 경로: POST `/api/restore-memo`
+- 요청 본문: { "memoId": "<B 시험 메모 UUID>" }
+- 허용 주체: 검증된 심판 시험 토큰의 `aleph_identity: b`만 허용합니다. 일반 학생 토큰과 A 시험 주체는 거부합니다.
+- 사본 테이블: `public.private_memo_snapshots` (RLS 활성화, `public`·`anon`·`authenticated` 직접 권한 회수)
+- 복구 감사: `public.memo_restore_audit`에 새 기록을 추가하며 기존 감사 이력을 수정하거나 삭제하지 않습니다.
+
+### 복원 전 검증
+1. 비공개 사본에서 요청한 `memoId`와 시험 주체 B를 모두 일치시킵니다.
+2. 사본 본문의 SHA-256 해시를 검증합니다.
+3. 현재 메모가 있으면 ID와 소유자가 사본과 일치하는지 확인합니다. 소유자가 다르면 중단합니다.
+4. 복원 후 ID·소유자·내용 해시가 사본과 일치하는지 다시 확인합니다.
+5. 대상 한 건만 삽입 또는 갱신하고 감사 기록을 추가합니다. 다른 메모는 조회·변경하지 않습니다.
+
+### Supabase 준비 및 시험
+- SQL Editor에서 `supabase/stage10-private-restore.sql`를 검토한 뒤 실행합니다.
+- `private_memo_snapshots`에는 실제 학생 자료가 아닌 B 소유의 가상 시험 메모 한 건만 등록합니다. `content_sha256`은 `body`의 UTF-8 바이트에 대한 SHA-256 16진수 값이어야 합니다. `owner_id`는 시험 계정 B의 실제 UUID와 일치해야 합니다. 비밀 토큰이나 키는 Git에 넣지 않습니다.
+- GitHub Actions의 **Stage 10 safe policy diff preview**에서 `npm run memo:restore:test` 단계가 통과하는지 확인합니다. 이는 코드 계약에 대한 자동 테스트이며 실제 Supabase 복원 실측과는 별개입니다.
+- 실제 복원 요청은 B 시험 토큰으로만 수행하고 응답의 `memo.id`, `memo.owner_id`, `memo.content_sha256`가 비공개 사본과 같은지 확인합니다. A 정상 요청 및 B의 A 자료 요청도 별도로 확인합니다. 실제 DB 연결·실측을 하지 않았다면 완료로 기록하지 않습니다.
+
