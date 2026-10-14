@@ -1,4 +1,3 @@
-
 const WINDOW_MS = 10 * 60 * 1000;
 const READ_THRESHOLD = 120;
 
@@ -30,8 +29,6 @@ function readEvent(event) {
     return null;
   }
 
-  // 기존 사건 계약의 필드만 기본으로 읽습니다.
-  // 추가 필드는 실제 입력에 존재할 때만 선택적으로 읽습니다.
   const network =
     typeof event.network === 'string'
       ? event.network
@@ -45,7 +42,6 @@ function readEvent(event) {
       : null;
 
   return {
-    at,
     timestamp: Date.parse(at),
     method,
     subject: sub,
@@ -53,6 +49,8 @@ function readEvent(event) {
     deviceId,
   };
 }
+
+const observe = () => ({ action: 'observe' });
 
 export function detect(events) {
   if (!Array.isArray(events)) {
@@ -90,31 +88,27 @@ export function detect(events) {
 
       if (windowReads.length <= READ_THRESHOLD) continue;
 
-      // 네트워크 이상이 명시적으로 관측된 사건만 인정합니다.
+      // 조회 폭주와 비정상 네트워크 신호가 같은 시간 창에 있어야 합니다.
       const unusualNetworkRead = windowReads.find(
         (event) => event.network === 'unusual',
       );
 
-      if (!unusualNetworkRead) continue;
+      if (!unusualNetworkRead || !unusualNetworkRead.deviceId) continue;
 
-      // 회수 대상 기기 ID가 실제 입력에 없으면 제안하지 않습니다.
-      if (!unusualNetworkRead.deviceId) continue;
-
-      // 회수 제안 대상은 비정상 네트워크 사건에서 확인된 가상 기기 한 개입니다.
-      // 같은 주체의 다른 조회에 기기 ID가 없거나 다르다는 이유로 탐지를 취소하지 않습니다.
-      const confirmedDeviceId = unusualNetworkRead.deviceId;
+      // 별도 탐지 결과에만 회수 제안을 기록합니다. 실제 권한은 변경하지 않습니다.
+      // 바깥 reasonCode는 탐지 규칙 코드, 안쪽 reasonCode는 제안 사유 코드입니다.
       return {
-        schema: 'aleph.detection.v1',
-        detected: true,
+        action: 'propose_revocation',
+        reasonCode: 'compound_network_burst',
         subject,
-        ruleIds: ['compound_network_burst'],
+        deviceId: unusualNetworkRead.deviceId,
         propose_revocation: {
-          targetDeviceId: confirmedDeviceId,
+          targetDeviceId: unusualNetworkRead.deviceId,
           reasonCode: 'composite_anomaly',
         },
       };
     }
   }
 
-  return { schema: 'aleph.detection.v1', detected: false, ruleIds: [] };
+  return observe();
 }
