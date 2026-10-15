@@ -52,9 +52,9 @@
     },
     {
       "alertId": "wi-09",
-      "action": "record",
-      "confidence": 0.12,
-      "reason": "no_matching_pattern"
+      "action": "alert",
+      "confidence": 0.62,
+      "reason": "possible_web_injection_unconfirmed"
     },
     {
       "alertId": "wi-10",
@@ -100,9 +100,9 @@
     },
     {
       "alertId": "wi-17",
-      "action": "record",
-      "confidence": 0.12,
-      "reason": "no_matching_pattern"
+      "action": "alert",
+      "confidence": 0.62,
+      "reason": "possible_web_injection_unconfirmed"
     },
     {
       "alertId": "wi-18",
@@ -161,7 +161,7 @@
   ],
   "counts": {
     "block": 6,
-    "alert": 4,
-    "record": 16
+    "alert": 6,
+    "record": 14
   }
 }
