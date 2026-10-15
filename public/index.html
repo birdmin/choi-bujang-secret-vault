@@ -220,6 +220,7 @@
       <p>기기 승인 상태: <span id="device-approval-status" class="app-state" aria-live="polite">서버 승인 확인 전</span></p>
       <p id="connection-status" aria-live="polite">연결 상태를 확인하고 있습니다.</p>
       <p class="offline-notice">오프라인에서는 서버 자료를 불러오거나 변경할 수 없습니다. 다시 온라인으로 연결한 뒤 로그인과 서버 판정을 확인해 주세요.</p>
+      <button id="request-device-approval-button" class="app-button" type="button" hidden>이 기기 승인 요청</button>
       <button id="install-app-button" class="app-button" type="button" hidden>앱 설치</button>
     </section>
 
@@ -276,12 +277,25 @@
     const deviceApprovalStatus = document.querySelector('#device-approval-status');
     const connectionStatus = document.querySelector('#connection-status');
     const installAppButton = document.querySelector('#install-app-button');
+    const requestDeviceApprovalButton = document.querySelector('#request-device-approval-button');
 
     let currentSession = null;
     let pendingInstallPrompt = null;
     // 승인 확인 API가 존재하고 서버가 명시적으로 approved=true를 반환하기 전에는
     // 자료실을 절대로 열지 않습니다. 설치 이벤트는 승인 근거가 아닙니다.
     let serverDeviceApproved = false;
+
+    // 기기별 임의 토큰은 브라우저에 보관하고 서버에는 해시만 전달·저장합니다.
+    function getDeviceToken() {
+      let token = localStorage.getItem('byte-back-device-token');
+      if (!token) {
+        const bytes = new Uint8Array(32);
+        crypto.getRandomValues(bytes);
+        token = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+        localStorage.setItem('byte-back-device-token', token);
+      }
+      return token;
+    }
 
     function updateDeviceApprovalStatus() {
       deviceApprovalStatus.textContent = serverDeviceApproved
@@ -291,6 +305,7 @@
           : '서버 승인 확인 전 · 로그인 전';
       memoPanel.hidden = !serverDeviceApproved;
       list.hidden = !serverDeviceApproved;
+      requestDeviceApprovalButton.hidden = !currentSession || serverDeviceApproved;
       if (!serverDeviceApproved) {
         list.replaceChildren();
         memoList.replaceChildren();
@@ -308,7 +323,10 @@
         const response = await fetch('/api/device-approval-status', {
           method: 'GET',
           cache: 'no-store',
-          headers: { Authorization: 'Bearer ' + currentSession.access_token }
+          headers: {
+            Authorization: 'Bearer ' + currentSession.access_token,
+            'x-device-token': getDeviceToken()
+          }
         });
         const result = await response.json().catch(() => ({}));
 
@@ -326,6 +344,40 @@
         return false;
       }
     }
+
+    requestDeviceApprovalButton.addEventListener('click', async () => {
+      if (!currentSession?.access_token) return;
+      requestDeviceApprovalButton.disabled = true;
+      requestDeviceApprovalButton.textContent = '승인 요청 중…';
+      try {
+        const response = await fetch('/api/device-approval-request', {
+          method: 'POST',
+          cache: 'no-store',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + currentSession.access_token
+          },
+          body: JSON.stringify({ deviceToken: getDeviceToken() })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'DEVICE_APPROVAL_REQUEST_FAILED');
+
+        if (result.approved === true) {
+          if (await verifyDeviceApproval()) {
+            await loadNotes();
+            await loadMemos();
+          }
+        } else {
+          showStatus('기기 승인 요청을 등록했습니다. 관리자 승인 전까지 자료는 잠겨 있습니다.', 'auth-success');
+          updateDeviceApprovalStatus();
+        }
+      } catch (error) {
+        showStatus('기기 승인 요청 실패: ' + error.message, 'auth-error');
+      } finally {
+        requestDeviceApprovalButton.disabled = false;
+        requestDeviceApprovalButton.textContent = '이 기기 승인 요청';
+      }
+    });
 
     function updateConnectionStatus() {
       connectionStatus.textContent = navigator.onLine
