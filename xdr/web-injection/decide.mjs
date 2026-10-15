@@ -9,14 +9,16 @@ function text(value) {
 }
 function countValue(alert) {
   const raw = alert?.data?.count ?? alert?.count;
-  const n = typeof raw === 'number' ? raw : Number(raw);
-  if (Number.isFinite(n) && n >= 0) return n;
-
-  // Some alert formats report repetition only in the rule description.
-  const description = text(alert?.rule?.description);
-  const match = description.match(/(?:([0-9]+)\s*번\s*(?:반복|들어왔|나왔|있습|연속)|연속 요청\s*([0-9]+)\s*번)/);
-  const describedCount = Number(match?.[1] ?? match?.[2]);
-  return Number.isFinite(describedCount) && describedCount >= 0 ? describedCount : 0;
+  if (raw === undefined || raw === null || raw === '') return 0;
+  const n = typeof raw === 'number' ? raw : Number(String(raw).trim());
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+function validSourceAddress(value) {
+  const source = text(value).trim();
+  const parts = source.split('.');
+  return parts.length === 4 && parts.every(part =>
+    /^\d{1,3}$/.test(part) && Number(part) >= 0 && Number(part) <= 255
+  );
 }
 function requestArguments(url, args, query) {
   const values = [args, query];
@@ -45,7 +47,7 @@ function decide(alert) {
   const query = text(alert?.data?.query ?? alert?.request?.query);
   const payload = requestArguments(url, args, query);
   const description = text(alert?.rule?.description);
-  const source = text(alert?.data?.srcip ?? alert?.sourceAddress ?? alert?.srcip).trim();
+  const source = text(alert?.data?.srcip ?? alert?.sourceAddress ?? alert?.srcip ?? alert?.data?.source_ip).trim();
   const count = countValue(alert);
 
   // Classify the request argument itself; descriptions are not evidence of a clear attack.
@@ -64,7 +66,7 @@ function decide(alert) {
     || /(?:따옴표가 한 번|(?:이름 검색|검색어).*(?:구분 문자|구분자)|주입처럼 보이|스크립트 표식과 SQL 표식|명령 구분자 표기|이상한 검색|구분 문자가? 1건)/i.test(description);
 
   // A source address and a positive repetition count must accompany a clear signal.
-  const repeatedSameSource = source.length > 0 && count >= 2;
+  const repeatedSameSource = validSourceAddress(source) && count >= 2;
   if (clearSignal && repeatedSameSource) {
     let reason = 'repeated_web_injection';
     if (clearSql) reason = 'sql_syntax_in_request_argument';
