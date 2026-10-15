@@ -56,10 +56,8 @@ function decide(alert) {
   const ambiguousSignal = /따옴표가 한 번|구분 문자(?:가| 표기)|이상한 검색|주입처럼 보이는 표기|스크립트 표식과 SQL 표식|명령 구분자 표기/i.test(description)
     || /doc-one-(?:fragment|marker)|doc-mixed-marker|doc-cmd-separator/i.test(payload);
 
-  if (ambiguousSignal) {
-    return { action: 'alert', confidence: 0.62, reason: 'possible_web_injection_unconfirmed' };
-  }
-
+  // Give an explicit, repeated attack precedence over weaker/ambiguous markers.
+  // The count belongs to this alert; do not infer repetition from source presence alone.
   const repeatedSameSource = source.length > 0 && count >= 2;
   if (clearSignal && repeatedSameSource) {
     let reason = 'repeated_web_injection';
@@ -69,7 +67,8 @@ function decide(alert) {
     return { action: 'block', confidence: 0.96, reason };
   }
 
-  if (clearSignal) {
+  // A clear but non-repeated signal, or an ambiguous one-off signal, is alert-only.
+  if (ambiguousSignal || clearSignal) {
     return { action: 'alert', confidence: 0.62, reason: 'possible_web_injection_unconfirmed' };
   }
 
