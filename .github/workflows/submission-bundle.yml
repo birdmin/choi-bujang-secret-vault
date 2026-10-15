@@ -22,7 +22,17 @@ jobs:
           cache: npm
       - name: Install project dependencies
         run: npm ci
+      - name: Prepare stage 12 bundle notes outside the repository
+        run: |
+          cat > /tmp/bundle-notes.json <<'EOF'
+          {
+            "explanation": "12단계 저장점에서는 README에 ALEPH SDP 제공 엔진과 학생이 관리하는 판정기·탐지기·자료실의 출처 및 재현 절차를 구분해 기록했고, aleph.config.json의 step을 12로 갱신했습니다. 실제 확인된 API 점검은 비로그인 메모 목록 요청의 HTTP 401 차단, 배포 설정 공개 응답, 공개 키 패턴 미검출, 원본 API 직접 요청의 HTTP 401 차단, nosniff 헤더 확인입니다. 41종 전체 시험과 운영 엔진의 모든 동작은 확인된 것으로 간주하지 않습니다.",
+            "blockedAt": null
+          }
+          EOF
       - name: Generate submission bundle
+        env:
+          BUNDLE_NOTES_PATH: /tmp/bundle-notes.json
         run: npm run bundle
       - name: Show submission JSON and summary
         if: success()
