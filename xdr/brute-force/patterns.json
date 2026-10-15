@@ -1,0 +1,14 @@
+{
+  "patterns": [
+    {
+      "name": "repeated_login_failures_same_source",
+      "condition": "Within a short time window, repeated login failures originate from the same source address.",
+      "evidence": "MITRE ATT&CK T1110 describes brute force attempts that repeatedly try credentials to gain access."
+    },
+    {
+      "name": "password_spraying_across_accounts",
+      "condition": "The same source address attempts authentication against multiple accounts using a shared candidate password.",
+      "evidence": "MITRE ATT&CK T1110.003 (Password Spraying) describes trying a password or small set of passwords against many accounts."
+    }
+  ]
+}
