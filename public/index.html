@@ -280,6 +280,29 @@
     const requestDeviceApprovalButton = document.querySelector('#request-device-approval-button');
 
     let currentSession = null;
+    const SESSION_STORAGE_KEY = 'byte-back-session';
+
+    // Keep the login session only for this browser tab. This survives reloads
+    // without leaving the access token in persistent localStorage.
+    function restoreCurrentSession() {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(SESSION_STORAGE_KEY) || 'null');
+        if (saved?.access_token && saved?.user?.email) return saved;
+      } catch {
+        // Ignore invalid or outdated session data and show the login form.
+      }
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      return null;
+    }
+
+    function saveCurrentSession() {
+      if (currentSession?.access_token && currentSession?.user?.email) {
+        sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(currentSession));
+      } else {
+        sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+    }
+
     let pendingInstallPrompt = null;
     // 승인 확인 API가 존재하고 서버가 명시적으로 approved=true를 반환하기 전에는
     // 자료실을 절대로 열지 않습니다. 설치 이벤트는 승인 근거가 아닙니다.
@@ -479,6 +502,7 @@
           access_token: data.access_token,
           user: data.user
         };
+        saveCurrentSession();
 
         passwordInput.value = '';
         showLoggedIn(data.user.email);
@@ -499,6 +523,7 @@
       showStatus('로그아웃 중입니다.');
 
       currentSession = null;
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
       serverDeviceApproved = false;
 
       showLoggedOut();
@@ -744,7 +769,21 @@
     }
 
     updateConnectionStatus();
-    showLoggedOut();
+
+    // Restore a tab-scoped session after reload, then re-check device approval
+    // on the server before requesting or showing any protected materials.
+    currentSession = restoreCurrentSession();
+    if (currentSession) {
+      showLoggedIn(currentSession.user.email);
+      (async () => {
+        if (await verifyDeviceApproval()) {
+          await loadNotes();
+          await loadMemos();
+        }
+      })();
+    } else {
+      showLoggedOut();
+    }
   </script>
 
 </body>
