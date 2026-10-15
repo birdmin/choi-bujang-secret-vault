@@ -70,7 +70,7 @@ function decide(alert) {
     return { action: 'block', confidence: best.confidence, reason: best.name };
   }
 
-  const ambiguous = /(?:주입처럼 보이는|명령 구분자 표기|표식과 SQL 표식|이상한 검색)/i.test(description)
+  const ambiguous = /(?:주입처럼 보이는|명령 구분자 표기|표식과 SQL 표식)/i.test(description)
     || /(?:%27|%3c|%2e%2e|\.\.)/i.test(payload)
     || (sql || script || traversal);
   if (ambiguous) {
