@@ -10,7 +10,13 @@ function text(value) {
 function countValue(alert) {
   const raw = alert?.data?.count ?? alert?.count;
   const n = typeof raw === 'number' ? raw : Number(raw);
-  return Number.isFinite(n) && n >= 0 ? n : 0;
+  if (Number.isFinite(n) && n >= 0) return n;
+
+  // Some alert formats report repetition only in the rule description.
+  const description = text(alert?.rule?.description);
+  const match = description.match(/(?:([0-9]+)\s*번\s*(?:반복|들어왔|나왔|있습|연속)|연속 요청\s*([0-9]+)\s*번)/);
+  const describedCount = Number(match?.[1] ?? match?.[2]);
+  return Number.isFinite(describedCount) && describedCount >= 0 ? describedCount : 0;
 }
 function requestArguments(url, args, query) {
   const values = [args, query];
@@ -53,7 +59,7 @@ function decide(alert) {
     || /경로를 여러 단계 거슬러 올라가는 표기|경로 이탈 표기/i.test(description);
   const clearSignal = clearSql || clearScript || clearTraversal;
 
-  const ambiguousSignal = /따옴표가 한 번|구분 문자(?:가| 표기)|이상한 검색|주입처럼 보이는 표기|스크립트 표식과 SQL 표식|명령 구분자 표기/i.test(description)
+  const ambiguousSignal = /(?:한 번|1건|한 건).*(?:따옴표|구분 문자|표식|검색|주입)|(?:반복은 없|반복되지 않)|(?:처럼 보이)|(?:표식과 .*표식)|(?:명령 구분자)|(?:이상한 검색)|(?:구분 문자)/i.test(description)
     || /doc-one-(?:fragment|marker)|doc-mixed-marker|doc-cmd-separator/i.test(payload);
 
   // Give an explicit, repeated attack precedence over weaker/ambiguous markers.
