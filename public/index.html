@@ -1,4 +1,3 @@
-```html
 <!doctype html>
 <html lang="ko">
 
@@ -267,6 +266,24 @@
       flex: 1;
     }
 
+
+    .ops-room { margin: 24px 0; padding: 20px; border: 1px solid #52758b; border-radius: 16px; background: linear-gradient(145deg, #162b3b, #142235); }
+    .ops-room h2 { margin: 0 0 8px; font-size: 24px; }
+    .ops-intro { margin: 6px 0 16px; font-size: 14px; }
+    .ops-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .ops-card { min-width: 0; border: 1px solid #415a70; border-radius: 12px; padding: 15px; background: #101e2d; }
+    .ops-card h3 { margin: 0 0 9px; font-size: 16px; color: #8ad8df; }
+    .ops-value { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+    .ops-detail { color: #bfd0e5; font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+    .ops-state { display: inline-block; margin-bottom: 8px; border-radius: 6px; padding: 4px 7px; background: #4b3b24; color: #ffe3a3; font-size: 12px; font-weight: 700; }
+    .ops-state.confirmed { background: #173f37; color: #9ee6c2; }
+    .ops-state.failed { background: #4d2934; color: #ffb7c2; }
+    .ops-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+    .ops-toolbar button { border: 0; border-radius: 9px; padding: 11px 14px; background: #8ad8df; color: #10202d; font: inherit; font-weight: 700; cursor: pointer; }
+    .ops-toolbar button:disabled { opacity: .6; cursor: wait; }
+    .ops-record { margin-top: 14px; border-top: 1px solid #415a70; padding-top: 12px; }
+    .ops-record-list { margin: 8px 0 0; padding-left: 18px; color: #bfd0e5; font-size: 13px; line-height: 1.6; }
+
     [hidden] {
       display: none !important;
     }
@@ -278,6 +295,21 @@
     <div class="eyebrow">BYTE BACK · 보호 자료실</div>
 
     <h1>나의 보호 자료실</h1>
+
+    <section class="auth-panel" aria-labelledby="auth-title">
+      <h2 id="auth-title">자료실 로그인</h2>
+
+      <form id="login-form" class="auth-form">
+        <input id="email" name="email" type="email" autocomplete="email" placeholder="이메일" required>
+        <input id="password" name="password" type="password" autocomplete="current-password" placeholder="비밀번호" required>
+        <button id="login-button" type="submit">로그인</button>
+      </form>
+
+      <button id="logout-button" class="secondary-button" type="button" hidden>
+        로그아웃
+      </button>
+      <p id="auth-status" class="auth-status" aria-live="polite"></p>
+    </section>
 
     <section class="app-panel" aria-labelledby="app-status-title">
       <h2 id="app-status-title">앱 및 기기 상태</h2>
@@ -301,25 +333,51 @@
       </button>
     </section>
 
+    <section class="ops-room" aria-labelledby="ops-room-title">
+      <h2 id="ops-room-title">탈환 작전실</h2>
+      <p class="ops-intro">서버가 실제로 반환한 안전한 요약만 기록합니다. 코드 계약 요약은 실측 결과가 아니며 확인하지 않은 항목은 미실행입니다. 메모 제목·본문, 토큰, 개인 식별자는 표시하지 않습니다.</p>
+      <div class="ops-grid">
+        <article class="ops-card">
+          <h3>판정기 규칙</h3><span class="ops-state">코드 계약 · 실측 아님</span>
+          <div class="ops-value">4개 규칙 ID</div>
+          <ul class="ops-record-list"><li>device_registered</li><li>step_up_required</li><li>resource_route_allowed</li><li>resource_route_denied</li></ul>
+          <p class="ops-detail">실제 요청 판정 응답은 별도 확인 전까지 미실행입니다.</p>
+        </article>
+        <article class="ops-card">
+          <h3>탐지 사건</h3><span class="ops-state">미실행</span>
+          <div class="ops-value">실제 사건 수: 확인 불가</div>
+          <p class="ops-detail">탐지기는 가상 사건 입력을 받습니다. 운영 사건 조회 API가 없어 실제 사건 수를 표시하지 않습니다.</p>
+        </article>
+        <article class="ops-card">
+          <h3>회수 상태</h3><span class="ops-state">미실행</span>
+          <div class="ops-value">회수 제안 전용</div>
+          <p class="ops-detail">탐지 결과는 제안이며 실제 기기 회수 API 또는 회수 완료 기록은 확인되지 않았습니다.</p>
+        </article>
+        <article class="ops-card">
+          <h3>복구 버전</h3><span class="ops-state">실제 복원 미확인</span>
+          <div class="ops-value">s4-memos-rls-v1</div>
+          <p class="ops-detail">정책 백업 SQL에 기록된 버전입니다. 이 화면은 복원 요청을 보내지 않으며 실제 복원 결과나 감사 행은 확인하지 않았습니다.</p>
+        </article>
+      </div>
+      <div class="ops-toolbar"><button id="ops-refresh-button" type="button">서버 응답 확인</button><span id="ops-refresh-status" class="ops-detail" aria-live="polite">실제 API 응답: 아직 확인하지 않음</span></div>
+      <div class="ops-record">
+        <strong>가린 서버 기록</strong>
+        <ul id="ops-server-records" class="ops-record-list"><li>기기 승인 API: 미실행</li><li>메모 목록 API: 미실행</li><li>탐지 사건·회수 실행·복구 감사: 미실행</li></ul>
+        <p class="ops-detail">확인 버튼은 로그인 세션의 읽기 전용 기기 승인 확인과 메모 목록 조회만 수행합니다. 메모 본문은 표시하지 않고 개수만 기록합니다.</p>
+      </div>
+    </section>
+
+
+
+
+
+
     <p>
       자료는 공개 정적 파일이 아니라 서버 API를 통해 불러옵니다.
       아래 기록은 모두 실습을 위해 만든 가상 자료입니다.
     </p>
 
-    <section class="auth-panel" aria-labelledby="auth-title">
-      <h2 id="auth-title">자료실 로그인</h2>
 
-      <form id="login-form" class="auth-form">
-        <input id="email" name="email" type="email" autocomplete="email" placeholder="이메일" required>
-        <input id="password" name="password" type="password" autocomplete="current-password" placeholder="비밀번호" required>
-        <button id="login-button" type="submit">로그인</button>
-      </form>
-
-      <button id="logout-button" class="secondary-button" type="button" hidden>
-        로그아웃
-      </button>
-      <p id="auth-status" class="auth-status" aria-live="polite"></p>
-    </section>
 
     <section id="memo-panel" class="memo-panel" aria-labelledby="memo-heading" hidden>
       <h2 id="memo-heading">내 가상 메모</h2>
@@ -364,6 +422,10 @@
     const connectionStatus = document.querySelector('#connection-status');
     const installAppButton = document.querySelector('#install-app-button');
     const requestDeviceApprovalButton = document.querySelector('#request-device-approval-button');
+    const opsRefreshButton = document.querySelector('#ops-refresh-button');
+    const opsRefreshStatus = document.querySelector('#ops-refresh-status');
+    const opsServerRecords = document.querySelector('#ops-server-records');
+
 
     let currentSession = null;
     let serverDeviceApproved = false;
@@ -435,6 +497,74 @@
         return false;
       }
     }
+
+
+    function renderOpsRecords(lines) {
+      opsServerRecords.replaceChildren();
+      for (const line of lines) {
+        const item = document.createElement('li');
+        item.textContent = line;
+        opsServerRecords.append(item);
+      }
+    }
+
+    async function refreshOpsRoom() {
+      if (!currentSession?.access_token) {
+        opsRefreshStatus.textContent = '실제 API 응답을 확인하려면 먼저 로그인하세요.';
+        renderOpsRecords(['기기 승인 API: 미실행 · 로그인 필요', '메모 목록 API: 미실행 · 로그인 필요', '탐지 사건·회수 실행·복구 감사: 미실행']);
+        return;
+      }
+      opsRefreshButton.disabled = true;
+      opsRefreshStatus.textContent = '읽기 전용 API 응답 확인 중…';
+      const records = [];
+      try {
+        const deviceResponse = await fetch('/api/device-approval-status', {
+          method: 'GET', credentials: 'same-origin', cache: 'no-store',
+          headers: { Authorization: 'Bearer ' + currentSession.access_token }
+        });
+        const deviceResult = await deviceResponse.json().catch(() => ({}));
+        const safeDeviceStatus = typeof deviceResult.status === 'string'
+          ? deviceResult.status.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) : 'unknown';
+        records.push('기기 승인 API: HTTP ' + deviceResponse.status
+          + ' · approved=' + (deviceResult.approved === true ? 'true' : deviceResult.approved === false ? 'false' : '미확인')
+          + ' · status=' + safeDeviceStatus);
+        if (!deviceResponse.ok) {
+          records.push('메모 목록 API: 미실행 · 기기 승인 응답이 정상적이지 않음');
+          records.push('탐지 사건·회수 실행·복구 감사: 미실행');
+          renderOpsRecords(records);
+          opsRefreshStatus.textContent = '기기 승인 API 응답만 확인했습니다. 보호 자료 결과는 미실행입니다.';
+          return;
+        }
+        if (deviceResult.approved !== true) {
+          records.push('메모 목록 API: 미실행 · 기기 미승인');
+          records.push('탐지 사건·회수 실행·복구 감사: 미실행');
+          renderOpsRecords(records);
+          opsRefreshStatus.textContent = '서버 응답 확인 완료 · 기기 미승인으로 자료 목록 조회는 수행하지 않았습니다.';
+          return;
+        }
+        const memoResponse = await fetch('/api/memos', {
+          method: 'GET', credentials: 'same-origin', cache: 'no-store',
+          headers: { Authorization: 'Bearer ' + currentSession.access_token }
+        });
+        const memoResult = await memoResponse.json().catch(() => ({}));
+        if (memoResponse.ok && Array.isArray(memoResult.memos)) {
+          records.push('메모 목록 API: HTTP ' + memoResponse.status + ' · 반환 개수=' + memoResult.memos.length + ' · 제목/본문 숨김');
+        } else {
+          const safeError = typeof memoResult.error === 'string'
+            ? memoResult.error.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 50) : 'UNKNOWN';
+          records.push('메모 목록 API: HTTP ' + memoResponse.status + ' · error=' + safeError);
+        }
+        records.push('탐지 사건·회수 실행·복구 감사: 미실행 · 조회 API 없음');
+        renderOpsRecords(records);
+        opsRefreshStatus.textContent = '실제 읽기 전용 API 응답을 표시했습니다. 미실행 항목은 성공으로 추정하지 않았습니다.';
+      } catch {
+        renderOpsRecords(['기기 승인 API: 요청 실패 · 응답 미확인', '메모 목록 API: 미실행', '탐지 사건·회수 실행·복구 감사: 미실행']);
+        opsRefreshStatus.textContent = '서버 응답을 확인하지 못했습니다. 오류 세부 정보는 노출하지 않았습니다.';
+      } finally {
+        opsRefreshButton.disabled = false;
+      }
+    }
+    opsRefreshButton.addEventListener('click', refreshOpsRoom);
 
     requestDeviceApprovalButton.addEventListener('click', async () => {
       if (!currentSession?.access_token) return;
@@ -619,6 +749,7 @@
       serverDeviceApproved = false;
 
       showLoggedOut();
+      refreshOpsRoom();
       resetMemoForm();
       memoList.replaceChildren();
       memoPanel.hidden = true;
@@ -744,4 +875,69 @@
 
         renderMemos(Array.isArray(data.memos) ? data.memos : []);
         showMemoStatus('');
-      } catch (
+      } catch (error) {
+        showMemoStatus(
+          '메모를 불러오지 못했습니다. 다시 시도해 주세요.',
+          'auth-error'
+        );
+      }
+    }
+
+    memoForm.addEventListener('submit', async event => {
+      event.preventDefault();
+
+      if (!currentSession?.access_token || !serverDeviceApproved) {
+        showMemoStatus('로그인과 기기 승인이 필요합니다.', 'auth-error');
+        return;
+      }
+
+      const id = memoIdInput.value.trim();
+      const method = id ? 'PUT' : 'POST';
+      const url = id
+        ? '/api/memos/' + encodeURIComponent(id)
+        : '/api/memos';
+
+      memoSubmit.disabled = true;
+
+      try {
+        const response = await fetch(url, {
+          method,
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: memoHeaders(),
+          body: JSON.stringify({
+            title: memoTitleInput.value.trim(),
+            body: memoBodyInput.value
+          })
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(data.error || 'MEMO_SAVE_FAILED');
+        }
+
+        showMemoStatus(id ? '메모를 수정했습니다.' : '메모를 추가했습니다.', 'auth-success');
+        resetMemoForm();
+        await loadMemos();
+      } catch (error) {
+        showMemoStatus(
+          '저장 실패: ' + (error?.message || 'MEMO_SAVE_FAILED'),
+          'auth-error'
+        );
+      } finally {
+        memoSubmit.disabled = false;
+      }
+    });
+
+    memoCancel.addEventListener('click', () => {
+      resetMemoForm();
+      showMemoStatus('');
+    });
+
+    updateConnectionStatus();
+    showLoggedOut();
+    refreshOpsRoom();
+  </script>
+</body>
+</html>
