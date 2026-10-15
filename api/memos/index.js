@@ -1,4 +1,6 @@
+```javascript
 import config from '../../aleph.config.json' with { type: 'json' };
+import { createHash, randomUUID } from 'node:crypto';
 import { RESOURCE_IDS, markResource } from '../../src/resource-ids.mjs';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../../src/verify-login.mjs';
@@ -17,18 +19,39 @@ function supabase() {
   const url = process.env.SUPABASE_URL;
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!url || !secret) throw new Error('MISSING_SUPABASE_CONFIG');
+
   return createClient(url, secret, {
-    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false
+    }
   });
+}
+
+function readDeviceCookie(request) {
+  const raw = request.headers.cookie || '';
+  const entry = raw
+    .split(';')
+    .map(part => part.trim())
+    .find(part => part.startsWith('byte-back-device='));
+
+  const token = entry
+    ? decodeURIComponent(entry.slice('byte-back-device='.length))
+    : '';
+
+  return /^[a-f0-9]{64}$/.test(token) ? token : null;
 }
 
 async function authenticate(request, response) {
   try {
     const identity = await (await getVerifier())(request.headers.authorization);
+
     if (!identity || identity.kind !== 'student') {
       response.status(401).json({ error: 'LOGIN_REQUIRED' });
       return null;
     }
+
     return identity;
   } catch {
     response.status(500).json({ error: 'LOGIN_VERIFICATION_ERROR' });
@@ -37,14 +60,15 @@ async function authenticate(request, response) {
 }
 
 async function requireApprovedDevice(request, response, identity, db) {
-  const token = request.headers['x-device-token'];
-  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{32,200}$/.test(token)) {
+  const token = readDeviceCookie(request);
+
+  if (!token) {
     response.status(403).json({ error: 'DEVICE_NOT_APPROVED' });
     return false;
   }
 
-  const { createHash } = await import('node:crypto');
-  const tokenHash = createHash('sha256').update(token).digest('hex');
+  const tokenHash = createHash('sha256').update(token, 'utf8').digest('hex');
+
   const { data, error } = await db
     .from('device_approvals')
     .select('id')
@@ -57,74 +81,6 @@ async function requireApprovedDevice(request, response, identity, db) {
     response.status(503).json({ error: 'DEVICE_APPROVAL_CHECK_FAILED' });
     return false;
   }
+
   if (!data) {
-    response.status(403).json({ error: 'DEVICE_NOT_APPROVED' });
-    return false;
-  }
-  return true;
-}
-
-function validUuid(value) {
-  return typeof value === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-export default async function handler(request, response) {
-  markResource(response, RESOURCE_IDS.studentMemos);
-  const identity = await authenticate(request, response);
-  if (!identity) return;
-
-  const db = supabase();
-  if (!(await requireApprovedDevice(request, response, identity, db))) return;
-
-  if (request.method === 'GET') {
-    const { data, error } = await db
-      .from('memos')
-      .select('id,title,body')
-      .eq('owner_id', identity.userId)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      response.status(500).json({ error: 'MEMOS_FETCH_FAILED' });
-      return;
-    }
-
-    response.setHeader('Cache-Control', 'no-store');
-    response.status(200).json({ resourceId: RESOURCE_IDS.studentMemos, memos: data });
-    return;
-  }
-
-  if (request.method === 'POST') {
-    const { id, title, body } = request.body ?? {};
-
-    if (id !== undefined && !validUuid(id)) {
-      response.status(400).json({ error: 'INVALID_ID' });
-      return;
-    }
-
-    if (typeof title !== 'string' || typeof body !== 'string') {
-      response.status(400).json({ error: 'INVALID_MEMO' });
-      return;
-    }
-
-    const memoId = id ?? crypto.randomUUID();
-    const { error } = await db.from('memos').insert({
-      id: memoId,
-      owner_id: identity.userId,
-      title,
-      body
-    });
-
-    if (error) {
-      response.status(error.code === '23505' ? 409 : 500).json({
-        error: error.code === '23505' ? 'MEMO_ID_ALREADY_EXISTS' : 'MEMO_CREATE_FAILED'
-      });
-      return;
-    }
-
-    response.status(201).json({ resourceId: RESOURCE_IDS.studentMemos, id: memoId });
-    return;
-  }
-
-  response.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
-}
+    response.status(403).
