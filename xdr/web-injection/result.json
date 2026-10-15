@@ -4,51 +4,51 @@
   "decisions": [
     {
       "alertId": "wi-01",
-      "action": "block",
-      "confidence": 0.96,
-      "reason": "sql_syntax_in_request_argument"
+      "action": "record",
+      "confidence": 0.12,
+      "reason": "no_matching_pattern"
     },
     {
       "alertId": "wi-02",
-      "action": "block",
-      "confidence": 0.96,
-      "reason": "script_tag_in_request_argument"
+      "action": "record",
+      "confidence": 0.12,
+      "reason": "no_matching_pattern"
     },
     {
       "alertId": "wi-03",
-      "action": "block",
-      "confidence": 0.96,
-      "reason": "repeated_parent_directory_traversal"
+      "action": "record",
+      "confidence": 0.12,
+      "reason": "no_matching_pattern"
     },
     {
       "alertId": "wi-04",
-      "action": "block",
-      "confidence": 0.96,
-      "reason": "sql_syntax_in_request_argument"
+      "action": "record",
+      "confidence": 0.12,
+      "reason": "no_matching_pattern"
     },
     {
       "alertId": "wi-05",
-      "action": "alert",
-      "confidence": 0.62,
-      "reason": "possible_web_injection_unconfirmed"
+      "action": "record",
+      "confidence": 0.12,
+      "reason": "no_matching_pattern"
     },
     {
       "alertId": "wi-06",
-      "action": "alert",
-      "confidence": 0.62,
-      "reason": "possible_web_injection_unconfirmed"
+      "action": "record",
+      "confidence": 0.12,
+      "reason": "no_matching_pattern"
     },
     {
       "alertId": "wi-07",
-      "action": "block",
-      "confidence": 0.96,
-      "reason": "repeated_parent_directory_traversal"
+      "action": "record",
+      "confidence": 0.12,
+      "reason": "no_matching_pattern"
     },
     {
       "alertId": "wi-08",
-      "action": "block",
-      "confidence": 0.96,
-      "reason": "sql_syntax_in_request_argument"
+      "action": "record",
+      "confidence": 0.12,
+      "reason": "no_matching_pattern"
     },
     {
       "alertId": "wi-09",
@@ -88,15 +88,15 @@
     },
     {
       "alertId": "wi-15",
-      "action": "alert",
-      "confidence": 0.62,
-      "reason": "possible_web_injection_unconfirmed"
+      "action": "record",
+      "confidence": 0.12,
+      "reason": "no_matching_pattern"
     },
     {
       "alertId": "wi-16",
-      "action": "alert",
-      "confidence": 0.62,
-      "reason": "possible_web_injection_unconfirmed"
+      "action": "record",
+      "confidence": 0.12,
+      "reason": "no_matching_pattern"
     },
     {
       "alertId": "wi-17",
@@ -160,8 +160,8 @@
     }
   ],
   "counts": {
-    "block": 6,
-    "alert": 6,
-    "record": 14
+    "block": 0,
+    "alert": 2,
+    "record": 24
   }
 }
