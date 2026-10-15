@@ -95,6 +95,10 @@ try {
   // observed result matches its expected security outcome.
   const failedChecks = attackAttempts.filter((attempt) => {
     const observed = attempt.observed;
+    // "not_run" means no judge-linked request record was supplied. It is
+    // allowed in the artifact as an explicitly unexecuted check, but it is
+    // never represented as a successful security observation.
+    if (observed === 'not_run') return false;
     if (attempt.attackId === 'anonymous_memo_list_read') {
       return !/비로그인 \/api\/notes가 JSON 오류로 차단됨 \(HTTP (401|403)\)/u.test(observed);
     }
