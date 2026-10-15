@@ -41,6 +41,34 @@ async function authenticate(request, response) {
   }
 }
 
+async function requireApprovedDevice(request, response, identity, client) {
+  const token = request.headers['x-device-token'];
+  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{32,200}$/.test(token)) {
+    response.status(403).json({ error: 'DEVICE_NOT_APPROVED' });
+    return false;
+  }
+
+  const { createHash } = await import('node:crypto');
+  const tokenHash = createHash('sha256').update(token).digest('hex');
+  const { data, error } = await client
+    .from('device_approvals')
+    .select('id')
+    .eq('owner_id', identity.userId)
+    .eq('device_token_hash', tokenHash)
+    .eq('status', 'approved')
+    .maybeSingle();
+
+  if (error) {
+    response.status(503).json({ error: 'DEVICE_APPROVAL_CHECK_FAILED' });
+    return false;
+  }
+  if (!data) {
+    response.status(403).json({ error: 'DEVICE_NOT_APPROVED' });
+    return false;
+  }
+  return true;
+}
+
 export default async function handler(request, response) {
   markResource(response, RESOURCE_IDS.studentMemos);
   const identity = await authenticate(request, response);
@@ -53,6 +81,7 @@ export default async function handler(request, response) {
   }
 
   const client = db();
+  if (!(await requireApprovedDevice(request, response, identity, client))) return;
 
   // Stage 4 savepoint: detail endpoints enforce ownership with the verified identity.
   if (request.method === 'GET') {
