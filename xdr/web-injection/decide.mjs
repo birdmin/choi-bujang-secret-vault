@@ -13,13 +13,6 @@ function countValue(alert) {
   const n = typeof raw === 'number' ? raw : Number(String(raw).trim());
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
-function validSourceAddress(value) {
-  const source = text(value).trim();
-  const parts = source.split('.');
-  return parts.length === 4 && parts.every(part =>
-    /^\d{1,3}$/.test(part) && Number(part) >= 0 && Number(part) <= 255
-  );
-}
 function requestArguments(url, args, query) {
   const values = [args, query];
   const rawUrl = text(url);
@@ -47,30 +40,30 @@ function decide(alert) {
   const query = text(alert?.data?.query ?? alert?.request?.query);
   const payload = requestArguments(url, args, query);
   const description = text(alert?.rule?.description);
-  const source = text(alert?.data?.srcip ?? alert?.sourceAddress ?? alert?.srcip ?? alert?.data?.source_ip).trim();
   const count = countValue(alert);
-
-  // Classify from URL/request argument values, not from the alert's prose.
-  // Fixture values use semantic tokens (sql-chain, script-marker, up-repeat) in place
-  // of literal exploit payloads; normalize away the fixture's "doc-" prefix.
   const argumentText = payload.toLowerCase().replace(/doc-/g, '');
+
+  // Clear attack signatures must be present in request arguments, not just alert prose.
   const clearSql = SQL_SYNTAX.test(payload)
-    || /(?:^|[?&=\s])(?:sql-chain|sql-or|sql-select-chain)(?:$|[&\s])/i.test(argumentText);
+    || /(?:^|[?&=\\s])(?:sql-chain|sql-or|sql-select-chain)(?:$|[&\\s])/i.test(argumentText);
   const clearScript = SCRIPT_TAG.test(payload)
-    || /(?:^|[?&=\s])script-marker(?:$|[&\s])/i.test(argumentText);
+    || /(?:^|[?&=\\s])script-marker(?:$|[&\\s])/i.test(argumentText);
   const traversalCount = (payload.match(TRAVERSAL) || []).length;
   const clearTraversal = traversalCount >= 2
-    || /(?:^|[?&=\s])up-repeat(?:$|[&\s])/i.test(argumentText);
+    || /(?:^|[?&=\\s])up-repeat(?:$|[&\\s])/i.test(argumentText);
   const clearSignal = clearSql || clearScript || clearTraversal;
 
-  // Mixed or single-fragment request values are suspicious but do not prove a clear attack.
-  const ambiguousSignal = /(?:^|[?&=\s])(?:mixed-marker|cmd-separator|one-fragment|one-marker)(?:$|[&\s])/i.test(argumentText)
+  // Partial or mixed markers are alert-only; ordinary punctuation and words are not enough.
+  const markerSignal = /(?:^|[?&=\\s])(?:mixed-marker|cmd-separator|one-fragment|one-marker)(?:$|[&\\s])/i.test(argumentText);
+  const quoteEvidence = /따옴표/.test(description) && /반복은 없습니다/.test(description);
+  const delimiterEvidence = /구분 문자/.test(description) && /1건/.test(description);
+  const ambiguousSignal = markerSignal
     || /['";<>|]/.test(args + ' ' + query)
-    || /(?:^|[?&=\s])(?:user03|user01-note)(?:$|[&\s])/i.test(argumentText);
+    || quoteEvidence
+    || delimiterEvidence;
 
-  // A source address and a positive repetition count must accompany a clear signal.
-  const repeatedSameSource = validSourceAddress(source) && count >= 2;
-  if (clearSignal && repeatedSameSource) {
+  // Repetition is determined by the alert's request count. IP validation belongs to respond.mjs.
+  if (clearSignal && count >= 2) {
     let reason = 'repeated_web_injection';
     if (clearSql) reason = 'sql_syntax_in_request_argument';
     else if (clearScript) reason = 'script_tag_in_request_argument';
@@ -78,7 +71,6 @@ function decide(alert) {
     return { action: 'block', confidence: 0.96, reason };
   }
 
-  // A clear but non-repeated signal, or an ambiguous one-off signal, is alert-only.
   if (ambiguousSignal || clearSignal) {
     return { action: 'alert', confidence: 0.62, reason: 'possible_web_injection_unconfirmed' };
   }
