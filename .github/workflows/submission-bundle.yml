@@ -24,9 +24,16 @@ jobs:
         run: npm ci
       - name: Generate submission bundle
         run: npm run bundle
+      - name: Show submission JSON and summary
+        if: success()
+        run: |
+          cat artifacts/submission.json
+          echo ""
+          echo "=== 제출 요약 ==="
+          node --input-type=module -e "import { readFileSync } from 'node:fs'; const b = JSON.parse(readFileSync('artifacts/submission.json', 'utf8')); console.log(JSON.stringify({step:b.step,commit:b.commit,repoUrl:b.repoUrl,changedFiles:b.changedFiles,policyRules:b.policyRules,attackAttempts:b.attackAttempts,explanation:b.explanation,blockedAt:b.blockedAt}, null, 2));"
       - name: Upload submission JSON
         uses: actions/upload-artifact@v4
         with:
-          name: stage-9-submission-bundle
+          name: stage-12-submission-bundle
           path: artifacts/submission.json
           if-no-files-found: error
