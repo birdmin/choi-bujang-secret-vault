@@ -3,7 +3,6 @@ const PATTERNS = Object.freeze({
   sql: /(?:union\s+(?:all\s+)?select\b|['"]\s*(?:or|and)\s+['"]?\d+\s*=\s*\d+|--(?:\s|$)|%23)/iu,
   script: /<\s*\/?\s*script\b|%3c\s*\/?\s*script\b/iu,
   traversal: /(?:\.\.|%2e%2e)(?:\/|%2f|\\\\|%5c)/iu,
-  weak: /(?:['"]|%27|%22|;|%3b)/iu,
 });
 const result = (action, confidence, reason) => ({ action, confidence, reason });
 
@@ -40,6 +39,7 @@ function repetitions(alert) {
 
 export function decide(alert) {
   if (!alert || typeof alert !== 'object') return result('record', 0.05, 'no_matching_pattern');
+
   const data = alert.data ?? {};
   const description = typeof alert?.rule?.description === 'string' ? alert.rule.description : '';
   const request = argumentsOf(alert);
@@ -51,7 +51,8 @@ export function decide(alert) {
   const traversalHits = request.match(new RegExp(PATTERNS.traversal.source, 'giu')) ?? [];
   const traversalArg = traversalHits.length >= 2;
 
-  // The fixture can sanitize payloads; descriptions only corroborate explicit families.
+  // Some supplied fixtures sanitize payloads; use only descriptions that explicitly
+  // identify a concrete attack family, never generic words like SQL or script.
   const sqlText = /sql 구문|데이터베이스 조회를 이어 붙이/iu.test(description);
   const scriptText = /스크립트 삽입 표기/iu.test(description);
   const traversalText = /경로를 여러 단계 거슬러|경로 이탈 표기/iu.test(description);
@@ -61,18 +62,19 @@ export function decide(alert) {
   const script = scriptArg || scriptText;
   const traversal = traversalArg || traversalText;
   const families = Number(sql) + Number(script) + Number(traversal);
-  const sameAddressRepeated = source.length > 0 && count >= 8;
 
+  // Repeated clear evidence from one source is a block candidate. Do not require
+  // an arbitrary count of eight; two or more observed attempts establish repetition.
+  const sameAddressRepeated = source.length > 0 && count >= 2;
   if (families === 1 && sameAddressRepeated) {
     if (sql) return result('block', 0.94, 'repeated_sql_injection');
     if (script) return result('block', 0.94, 'repeated_script_injection');
     return result('block', 0.94, 'repeated_path_traversal');
   }
 
-  const repeatedFamilyDescription = count >= 2
-    && /sql 구문|데이터베이스 조회를 이어 붙이|스크립트 삽입 표기|경로를 여러 단계 거슬러|경로 이탈 표기/iu.test(description);
-  if (ambiguous || sqlArg || scriptArg || traversalHits.length > 0 || PATTERNS.weak.test(request)
-    || repeatedFamilyDescription) {
+  // Ambiguous signals and single, concrete but unconfirmed indicators alert.
+  // Weak punctuation by itself is deliberately not treated as attack evidence.
+  if (ambiguous || families > 0) {
     return result('alert', 0.65, 'possible_web_injection_unconfirmed');
   }
   return result('record', 0.05, 'no_matching_pattern');
