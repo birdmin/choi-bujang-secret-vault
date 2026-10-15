@@ -18,44 +18,66 @@ function getCount(alert) {
   const n = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(n) && n > 0 ? n : 1;
 }
+function repeatedEvidence(description, count) {
+  return count >= 2 && /(?:반복|이어 붙|번 들어왔|번 나왔|연속 요청|여러 단계)/i.test(description);
+}
 function decide(alert) {
   if (!alert || typeof alert !== 'object') {
     return { action: 'record', confidence: 0, reason: 'no_matching_pattern' };
   }
+
+  // Match the actual Wazuh-like fixture shape: rule.level/rule.description and data.srcip/url/count.
   const description = asText(alert?.rule?.description ?? alert?.description);
   const url = asText(alert?.data?.url ?? alert?.url ?? alert?.request?.url);
+  const sourceAddress = asText(alert?.data?.srcip ?? alert?.sourceAddress ?? alert?.srcip);
   const payload = url + ' ' + asText(alert?.data?.query) + ' ' + asText(alert?.data?.args);
   const count = getCount(alert);
-  const level = Number(alert?.rule?.level ?? alert?.ruleLevel ?? 0);
+  const repeated = repeatedEvidence(description, count);
+  const hasSource = /^(?:\d{1,3}\.){3}\d{1,3}$/.test(sourceAddress)
+    || sourceAddress.includes(':');
   const hits = [];
 
-  const sql = SQL_OR.test(payload)
-    || (/(?:sql|데이터베이스 조회)/i.test(description) && /(?:반복|이어 붙|번 들어왔|표기)/i.test(description));
-  const script = SCRIPT_TAG.test(payload)
-    || (/스크립트/i.test(description) && /(?:삽입 표식|삽입 표기|태그)/i.test(description));
+  const sqlInPayload = SQL_OR.test(payload);
+  const scriptInPayload = SCRIPT_TAG.test(payload);
   const traversalCount = (payload.match(TRAVERSAL) || []).length;
-  const traversal = traversalCount >= 2
-    || (/경로.{0,8}(?:거슬러|이탈|올라가)|경로를 여러 단계/i.test(description)
-      && /(?:반복|여러 단계|여러 번)/i.test(description));
 
-  if (sql) hits.push({ name: PATTERNS[0].name, confidence: count >= 8 || /(?:반복|이어 붙)/i.test(description) ? 0.96 : 0.68 });
-  if (script) hits.push({ name: PATTERNS[1].name, confidence: count >= 8 || /(?:반복|여러 번)/i.test(description) ? 0.95 : 0.68 });
-  if (traversal) hits.push({ name: PATTERNS[2].name, confidence: count >= 8 || traversalCount >= 2 ? 0.94 : 0.68 });
+  const sqlDescription = /(?:SQL 구문|데이터베이스 조회|SQL 표기)/i.test(description)
+    && /(?:반복|이어 붙|번 들어왔|표기)/i.test(description);
+  const scriptDescription = /스크립트 삽입 표기/i.test(description)
+    && /(?:반복|번 나왔|번 들어왔)/i.test(description);
+  const traversalDescription = /경로.{0,12}(?:거슬러 올라가는|이탈 표기)|경로를 여러 단계/i.test(description)
+    && /(?:반복|여러 단계|번 들어왔)/i.test(description);
 
-  if (!hits.length) {
-    const weak = /(?:주입처럼|표식|삽입|경로 이탈|sql 구문|스크립트)/i.test(description)
-      || /(?:%27|%3c|%2e%2e|\.\.)/i.test(payload);
-    if (weak || level >= 8) {
-      return { action: 'alert', confidence: 0.58, reason: 'possible_web_injection_unconfirmed' };
-    }
-    return { action: 'record', confidence: 0.12, reason: 'no_matching_pattern' };
+  const sql = sqlInPayload || sqlDescription;
+  const script = scriptInPayload || scriptDescription;
+  const traversal = traversalCount >= 2 || traversalDescription;
+  const mixedRepeated = /스크립트 표식과 SQL 표식/i.test(description)
+    && /같은 주소에서 번갈아 \d+번/i.test(description)
+    && count >= 2 && hasSource;
+
+  // Only block when a recognized injection signal and explicit repeated-attempt evidence agree.
+  if (mixedRepeated) {
+    hits.push({ name: 'repeated_mixed_web_injection', confidence: 0.96 });
+  } else {
+    if (sql && repeated && hasSource) hits.push({ name: PATTERNS[0].name, confidence: 0.96 });
+    if (script && repeated && hasSource) hits.push({ name: PATTERNS[1].name, confidence: 0.95 });
+    if (traversal && repeated && hasSource) hits.push({ name: PATTERNS[2].name, confidence: 0.94 });
   }
-  hits.sort((a, b) => b.confidence - a.confidence);
-  const best = hits[0];
-  return {
-    action: best.confidence >= 0.85 ? 'block' : best.confidence >= 0.5 ? 'alert' : 'record',
-    confidence: best.confidence,
-    reason: best.name,
-  };
+
+  if (hits.length) {
+    hits.sort((a, b) => b.confidence - a.confidence);
+    const best = hits[0];
+    return { action: 'block', confidence: best.confidence, reason: best.name };
+  }
+
+  const ambiguous = /(?:주입처럼 보이는|명령 구분자 표기|표식과 SQL 표식|이상한 검색)/i.test(description)
+    || /(?:%27|%3c|%2e%2e|\.\.)/i.test(payload)
+    || (sql || script || traversal);
+  if (ambiguous) {
+    return { action: 'alert', confidence: 0.58, reason: 'possible_web_injection_unconfirmed' };
+  }
+
+  // Rule level alone and ordinary words such as "script", "sql", or "select" are not attack evidence.
+  return { action: 'record', confidence: 0.12, reason: 'no_matching_pattern' };
 }
 export { decide };
