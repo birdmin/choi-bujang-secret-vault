@@ -279,11 +279,52 @@
 
     let currentSession = null;
     let pendingInstallPrompt = null;
+    // 승인 확인 API가 존재하고 서버가 명시적으로 approved=true를 반환하기 전에는
+    // 자료실을 절대로 열지 않습니다. 설치 이벤트는 승인 근거가 아닙니다.
+    let serverDeviceApproved = false;
 
     function updateDeviceApprovalStatus() {
-      deviceApprovalStatus.textContent = currentSession
-        ? '서버에서 별도 확인 필요 · 이 화면에서는 승인 여부를 확인할 수 없음'
-        : '서버 승인 확인 전 · 로그인 전';
+      deviceApprovalStatus.textContent = serverDeviceApproved
+        ? '서버 승인 확인 완료'
+        : currentSession
+          ? '승인 확인 불가 · 보호 자료 잠금'
+          : '서버 승인 확인 전 · 로그인 전';
+      memoPanel.hidden = !serverDeviceApproved;
+      list.hidden = !serverDeviceApproved;
+      if (!serverDeviceApproved) {
+        list.replaceChildren();
+        memoList.replaceChildren();
+      }
+    }
+
+    async function verifyDeviceApproval() {
+      serverDeviceApproved = false;
+      updateDeviceApprovalStatus();
+
+      if (!currentSession?.access_token) return false;
+
+      try {
+        // 브라우저의 설치 상태나 버튼 클릭 상태가 아니라 서버 응답만 신뢰합니다.
+        const response = await fetch('/api/device-approval-status', {
+          method: 'GET',
+          cache: 'no-store',
+          headers: { Authorization: 'Bearer ' + currentSession.access_token }
+        });
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || result.approved !== true) {
+          throw new Error('DEVICE_APPROVAL_NOT_CONFIRMED');
+        }
+
+        serverDeviceApproved = true;
+        updateDeviceApprovalStatus();
+        return true;
+      } catch {
+        serverDeviceApproved = false;
+        updateDeviceApprovalStatus();
+        showStatus('기기 승인을 서버에서 확인하지 못했습니다. 보호 자료는 잠겨 있습니다.', 'auth-error');
+        return false;
+      }
     }
 
     function updateConnectionStatus() {
@@ -324,6 +365,7 @@
 
     function showLoggedOut() {
       currentSession = null;
+      serverDeviceApproved = false;
       form.hidden = false;
       logoutButton.hidden = true;
       updateDeviceApprovalStatus();
@@ -388,8 +430,11 @@
 
         passwordInput.value = '';
         showLoggedIn(data.user.email);
-        await loadNotes();
-        await loadMemos();
+        // 로그인 성공은 기기 승인이 아닙니다. 서버 확인 성공 후에만 자료를 요청합니다.
+        if (await verifyDeviceApproval()) {
+          await loadNotes();
+          await loadMemos();
+        }
       } catch (error) {
         showStatus(explainAuthError(error), 'auth-error');
       } finally {
@@ -402,6 +447,7 @@
       showStatus('로그아웃 중입니다.');
 
       currentSession = null;
+      serverDeviceApproved = false;
 
       showLoggedOut();
       list.replaceChildren();
@@ -507,7 +553,7 @@
     }
 
     async function loadMemos() {
-      if (!currentSession?.access_token) {
+      if (!currentSession?.access_token || !serverDeviceApproved) {
         memoPanel.hidden = true;
         memoList.replaceChildren();
         return;
@@ -601,7 +647,7 @@
     });
 
     async function loadNotes() {
-      if (!currentSession?.access_token) {
+      if (!currentSession?.access_token || !serverDeviceApproved) {
         list.replaceChildren();
         return;
       }
