@@ -61,8 +61,7 @@ export function decide(alert) {
   const script = scriptArg || scriptText;
   const traversal = traversalArg || traversalText;
   const families = Number(sql) + Number(script) + Number(traversal);
-  const sameAddressRepeated = source.length > 0 && count >= 8
-    && /같은 주소|한 주소|동일 주소/iu.test(description);
+  const sameAddressRepeated = source.length > 0 && count >= 8;
 
   if (families === 1 && sameAddressRepeated) {
     if (sql) return result('block', 0.94, 'repeated_sql_injection');
@@ -70,8 +69,10 @@ export function decide(alert) {
     return result('block', 0.94, 'repeated_path_traversal');
   }
 
+  const repeatedFamilyDescription = count >= 2
+    && /sql 구문|데이터베이스 조회를 이어 붙이|스크립트 삽입 표기|경로를 여러 단계 거슬러|경로 이탈 표기/iu.test(description);
   if (ambiguous || sqlArg || scriptArg || traversalHits.length > 0 || PATTERNS.weak.test(request)
-    || /sql|스크립트|경로.*거슬러|경로 이탈|주입|삽입|구분 문자|따옴표/iu.test(description)) {
+    || repeatedFamilyDescription) {
     return result('alert', 0.65, 'possible_web_injection_unconfirmed');
   }
   return result('record', 0.05, 'no_matching_pattern');
