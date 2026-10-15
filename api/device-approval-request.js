@@ -1,3 +1,4 @@
+```javascript
 import config from '../aleph.config.json' with { type: 'json' };
 import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
@@ -17,13 +18,28 @@ function supabase() {
   const url = process.env.SUPABASE_URL;
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!url || !secret) throw new Error('MISSING_SUPABASE_CONFIG');
+
   return createClient(url, secret, {
-    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false
+    }
   });
 }
 
-function validDeviceToken(value) {
-  return typeof value === 'string' && /^[A-Za-z0-9_-]{32,200}$/.test(value);
+function readDeviceCookie(request) {
+  const raw = request.headers.cookie || '';
+  const entry = raw
+    .split(';')
+    .map(part => part.trim())
+    .find(part => part.startsWith('byte-back-device='));
+
+  const token = entry
+    ? decodeURIComponent(entry.slice('byte-back-device='.length))
+    : '';
+
+  return /^[a-f0-9]{64}$/.test(token) ? token : null;
 }
 
 export default async function handler(request, response) {
@@ -47,15 +63,19 @@ export default async function handler(request, response) {
     return;
   }
 
-  const token = request.body?.deviceToken;
-  if (!validDeviceToken(token)) {
-    response.status(400).json({ error: 'INVALID_DEVICE_TOKEN' });
+  const token = readDeviceCookie(request);
+  if (!token) {
+    response.status(400).json({ error: 'DEVICE_COOKIE_MISSING' });
     return;
   }
 
   try {
-    const tokenHash = createHash('sha256').update(token, 'utf8').digest('hex');
+    const tokenHash = createHash('sha256')
+      .update(token, 'utf8')
+      .digest('hex');
+
     const client = supabase();
+
     const { data: existing, error: lookupError } = await client
       .from('device_approvals')
       .select('status')
@@ -64,7 +84,9 @@ export default async function handler(request, response) {
       .maybeSingle();
 
     if (lookupError) {
-      response.status(500).json({ error: 'DEVICE_APPROVAL_LOOKUP_FAILED' });
+      response.status(500).json({
+        error: 'DEVICE_APPROVAL_LOOKUP_FAILED'
+      });
       return;
     }
 
@@ -77,14 +99,15 @@ export default async function handler(request, response) {
       return;
     }
 
-    const { error: insertError } = await client.from('device_approvals').insert({
-      owner_id: identity.userId,
-      device_token_hash: tokenHash,
-      status: 'pending'
-    });
+    const { error: insertError } = await client
+      .from('device_approvals')
+      .insert({
+        owner_id: identity.userId,
+        device_token_hash: tokenHash,
+        status: 'pending'
+      });
 
     if (insertError) {
-      // A unique-token race must not accidentally approve the device.
       response.status(insertError.code === '23505' ? 409 : 500).json({
         error: insertError.code === '23505'
           ? 'DEVICE_TOKEN_ALREADY_REGISTERED'
@@ -99,6 +122,9 @@ export default async function handler(request, response) {
       approved: false
     });
   } catch {
-    response.status(500).json({ error: 'DEVICE_APPROVAL_REQUEST_FAILED' });
+    response.status(500).json({
+      error: 'DEVICE_APPROVAL_REQUEST_FAILED'
+    });
   }
 }
+```
