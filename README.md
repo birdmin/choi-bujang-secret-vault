@@ -291,3 +291,13 @@ select public.memos_policy_restore('s4-memos-rls-v1', true);
 | 복원 범위·감사 | B 시험 주체로 지정된 B 가상 메모 한 건 복원, ID·소유자·본문 해시 및 새 감사 행 확인 | A/일반 학생 주체, 타인 소유 메모, 누락·변조된 사본 | **미실행** |
 
 GitHub Actions의 자동 테스트는 소스 코드 계약을 확인하는 시험이며, 실제 배포 API나 Supabase DB의 실측과는 다릅니다. 복원 뒤 재시험의 각 결과는 실제로 실행한 요청과 확인한 응답을 기록한 경우에만 갱신합니다. 토큰, 개인키, 비밀값은 README나 로그에 기록하지 않습니다.
+
+
+## 11단계 저장점: 앱 상태와 판정 계약
+
+- `aleph.config.json`의 `step`은 11입니다. `judgeIssuer`는 운영 측 심판 접수 서버 주소이므로 학생이 변경하지 않습니다.
+- `public/manifest.webmanifest`와 `public/app-icon.svg`는 설치 가능한 웹 앱의 메타데이터와 아이콘입니다. 앱 설치는 기기 승인을 뜻하지 않습니다.
+- `public/index.html`은 연결 상태와 기기 승인 확인 전 상태를 표시합니다. 현재 저장소에는 서버가 등록 기기를 확인하는 실제 API가 확인되지 않았으므로, 이 화면은 승인 완료를 주장하지 않습니다.
+- `src/decider.mjs`의 `decide(request)`는 `docs/DECIDER_REQUEST.md`에 정의된 요청 필드만 사용하도록 유지합니다. 응답은 `schema`, `requestId`, `decision`, `reasonCode`, `ruleIds` 다섯 항목입니다. `ruleIds`는 `RULE_IDS`에 선언된 규칙만 사용합니다.
+- `npm install`, `npm run decider:test`, `npm run bundle`은 이 수정 과정에서 직접 실행하지 않았습니다. GitHub Actions 결과와 제출 묶음은 해당 실행 기록을 확인한 뒤에만 성공으로 기록합니다.
+- 직접 확인할 항목: 미승인 기기에서 보호 자료가 노출되지 않는지, 기존에 승인된 기기에서 자료실 기능이 유지되는지. 서버 승인 확인 경로가 연결되기 전까지 실제 기기 승인 검증은 미완료입니다.
