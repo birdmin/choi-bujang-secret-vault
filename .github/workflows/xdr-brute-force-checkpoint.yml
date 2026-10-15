@@ -1,0 +1,63 @@
+name: XDR Brute Force Checkpoint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'xdr/brute-force/**'
+      - 'xdr/fixtures/brute-force.json'
+      - 'scripts/xdr-run.mjs'
+      - 'package.json'
+      - '.github/workflows/xdr-brute-force-checkpoint.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-and-checkpoint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run brute-force XDR fixture
+        run: npm run xdr:run -- brute-force
+
+      - name: Show decision counts
+        id: counts
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const result = JSON.parse(readFileSync('xdr/brute-force/result.json', 'utf8'));
+          const counts = result.counts;
+          for (const key of ['block', 'alert', 'record']) {
+            if (!Number.isInteger(counts?.[key]) || counts[key] < 0) {
+              throw new Error(`invalid_count_${key}`);
+            }
+          }
+          const line = `block=${counts.block} alert=${counts.alert} record=${counts.record}`;
+          console.log(line);
+          console.log(`::notice title=XDR decision counts::${line}`);
+          NODE
+
+      - name: Commit result checkpoint
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add xdr/brute-force/result.json
+          if git diff --cached --quiet; then
+            echo "result.json is unchanged; no checkpoint commit needed."
+          else
+            git commit -m "보너스 xdr-01 저장점"
+            git push origin HEAD:main
+          fi
