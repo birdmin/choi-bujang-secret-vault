@@ -42,6 +42,10 @@ export default async function handler(request, response) {
     }
 
     response.setHeader('Cache-Control', 'no-store');
+    response.setHeader('Set-Cookie', [
+      `byte-back-session=${encodeURIComponent(data.session.access_token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`,
+      `byte-back-refresh=${encodeURIComponent(data.session.refresh_token)}; Path=/api/auth; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`
+    ]);
     response.status(200).json({
       access_token: data.session.access_token,
       user: {
