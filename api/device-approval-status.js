@@ -1,5 +1,6 @@
+```javascript
 import config from '../aleph.config.json' with { type: 'json' };
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../src/verify-login.mjs';
 
@@ -18,12 +19,37 @@ function supabase() {
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!url || !secret) throw new Error('MISSING_SUPABASE_CONFIG');
   return createClient(url, secret, {
-    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false
+    }
   });
 }
 
-function validDeviceToken(value) {
-  return typeof value === 'string' && /^[A-Za-z0-9_-]{32,200}$/.test(value);
+function readDeviceCookie(request) {
+  const raw = request.headers.cookie || '';
+  const entry = raw
+    .split(';')
+    .map(part => part.trim())
+    .find(part => part.startsWith('byte-back-device='));
+
+  const token = entry
+    ? decodeURIComponent(entry.slice('byte-back-device='.length))
+    : '';
+
+  return /^[a-f0-9]{64}$/.test(token) ? token : null;
+}
+
+function issueDeviceCookie(response) {
+  const token = randomBytes(32).toString('hex');
+
+  response.setHeader(
+    'Set-Cookie',
+    `byte-back-device=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`
+  );
+
+  return token;
 }
 
 export default async function handler(request, response) {
@@ -43,18 +69,23 @@ export default async function handler(request, response) {
   }
 
   if (!identity || identity.kind !== 'student') {
-    response.status(401).json({ error: 'LOGIN_REQUIRED', approved: false });
+    response.status(401).json({
+      error: 'LOGIN_REQUIRED',
+      approved: false
+    });
     return;
   }
 
-  const token = request.headers['x-device-token'];
-  if (!validDeviceToken(token)) {
-    response.status(200).json({ approved: false, status: 'unregistered' });
-    return;
+  let token = readDeviceCookie(request);
+  if (!token) {
+    token = issueDeviceCookie(response);
   }
 
   try {
-    const tokenHash = createHash('sha256').update(token, 'utf8').digest('hex');
+    const tokenHash = createHash('sha256')
+      .update(token, 'utf8')
+      .digest('hex');
+
     const { data, error } = await supabase()
       .from('device_approvals')
       .select('status')
@@ -63,7 +94,10 @@ export default async function handler(request, response) {
       .maybeSingle();
 
     if (error) {
-      response.status(500).json({ error: 'DEVICE_APPROVAL_LOOKUP_FAILED', approved: false });
+      response.status(500).json({
+        error: 'DEVICE_APPROVAL_LOOKUP_FAILED',
+        approved: false
+      });
       return;
     }
 
@@ -72,6 +106,10 @@ export default async function handler(request, response) {
       status: data?.status ?? 'unregistered'
     });
   } catch {
-    response.status(500).json({ error: 'DEVICE_APPROVAL_LOOKUP_FAILED', approved: false });
+    response.status(500).json({
+      error: 'DEVICE_APPROVAL_LOOKUP_FAILED',
+      approved: false
+    });
   }
 }
+```
