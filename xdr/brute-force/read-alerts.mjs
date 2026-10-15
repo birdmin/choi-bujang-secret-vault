@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 
 const FIXTURE_URL = new URL('../fixtures/brute-force.json', import.meta.url);
 const SECRET_ASSIGNMENT = /\b(password|passwd|pwd|token|secret|api[_-]?key|authorization|bearer)\b\s*[:=]\s*[^\s,;]+/gi;
@@ -46,7 +47,7 @@ export function readAlerts(fixture = loadFixture()) {
 
 // When run directly, print exactly one JSON line per alert and no other output.
 const invokedPath = process.argv[1];
-if (invokedPath && fileURLToPath(import.meta.url) === invokedPath) {
+if (invokedPath && fileURLToPath(import.meta.url) === resolve(invokedPath)) {
   for (const row of readAlerts()) {
     process.stdout.write(`${JSON.stringify(row)}\n`);
   }
