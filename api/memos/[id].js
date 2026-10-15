@@ -1,4 +1,6 @@
+```javascript
 import config from '../../aleph.config.json' with { type: 'json' };
+import { createHash } from 'node:crypto';
 import { RESOURCE_IDS, markResource, withResourceId } from '../../src/resource-ids.mjs';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../../src/verify-login.mjs';
@@ -17,9 +19,28 @@ function db() {
   const url = process.env.SUPABASE_URL;
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!url || !secret) throw new Error('MISSING_SUPABASE_CONFIG');
+
   return createClient(url, secret, {
-    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false
+    }
   });
+}
+
+function readDeviceCookie(request) {
+  const raw = request.headers.cookie || '';
+  const entry = raw
+    .split(';')
+    .map(part => part.trim())
+    .find(part => part.startsWith('byte-back-device='));
+
+  const token = entry
+    ? decodeURIComponent(entry.slice('byte-back-device='.length))
+    : '';
+
+  return /^[a-f0-9]{64}$/.test(token) ? token : null;
 }
 
 function validUuid(value) {
@@ -30,10 +51,12 @@ function validUuid(value) {
 async function authenticate(request, response) {
   try {
     const identity = await (await getVerifier())(request.headers.authorization);
+
     if (!identity || identity.kind !== 'student') {
       response.status(401).json({ error: 'LOGIN_REQUIRED' });
       return null;
     }
+
     return identity;
   } catch {
     response.status(500).json({ error: 'LOGIN_VERIFICATION_ERROR' });
@@ -42,14 +65,17 @@ async function authenticate(request, response) {
 }
 
 async function requireApprovedDevice(request, response, identity, client) {
-  const token = request.headers['x-device-token'];
-  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{32,200}$/.test(token)) {
+  const token = readDeviceCookie(request);
+
+  if (!token) {
     response.status(403).json({ error: 'DEVICE_NOT_APPROVED' });
     return false;
   }
 
-  const { createHash } = await import('node:crypto');
-  const tokenHash = createHash('sha256').update(token).digest('hex');
+  const tokenHash = createHash('sha256')
+    .update(token, 'utf8')
+    .digest('hex');
+
   const { data, error } = await client
     .from('device_approvals')
     .select('id')
@@ -62,15 +88,18 @@ async function requireApprovedDevice(request, response, identity, client) {
     response.status(503).json({ error: 'DEVICE_APPROVAL_CHECK_FAILED' });
     return false;
   }
+
   if (!data) {
     response.status(403).json({ error: 'DEVICE_NOT_APPROVED' });
     return false;
   }
+
   return true;
 }
 
 export default async function handler(request, response) {
   markResource(response, RESOURCE_IDS.studentMemos);
+
   const identity = await authenticate(request, response);
   if (!identity) return;
 
@@ -80,12 +109,20 @@ export default async function handler(request, response) {
     return;
   }
 
-  const client = db();
+  let client;
+  try {
+    client = db();
+  } catch {
+    response.status(500).json({ error: 'MISSING_SUPABASE_CONFIG' });
+    return;
+  }
+
   if (!(await requireApprovedDevice(request, response, identity, client))) return;
 
   // Stage 4 savepoint: detail endpoints enforce ownership with the verified identity.
   if (request.method === 'GET') {
-    const { data, error } = await client.from('memos')
+    const { data, error } = await client
+      .from('memos')
       .select('id,title,body')
       .eq('id', id)
       .eq('owner_id', identity.userId)
@@ -95,6 +132,7 @@ export default async function handler(request, response) {
       response.status(500).json({ error: 'MEMO_FETCH_FAILED' });
       return;
     }
+
     if (!data) {
       response.status(404).json({ error: 'MEMO_NOT_FOUND' });
       return;
@@ -107,12 +145,14 @@ export default async function handler(request, response) {
 
   if (request.method === 'PUT') {
     const { title, body } = request.body ?? {};
+
     if (typeof title !== 'string' || typeof body !== 'string') {
       response.status(400).json({ error: 'INVALID_MEMO' });
       return;
     }
 
-    const { data: existing, error: fetchError } = await client.from('memos')
+    const { data: existing, error: fetchError } = await client
+      .from('memos')
       .select('id,owner_id')
       .eq('id', id)
       .maybeSingle();
@@ -121,16 +161,19 @@ export default async function handler(request, response) {
       response.status(500).json({ error: 'MEMO_FETCH_FAILED' });
       return;
     }
+
     if (!existing) {
       response.status(404).json({ error: 'MEMO_NOT_FOUND' });
       return;
     }
+
     if (existing.owner_id !== identity.userId) {
       response.status(403).json({ error: 'MEMO_FORBIDDEN' });
       return;
     }
 
-    const { data, error } = await client.from('memos')
+    const { data, error } = await client
+      .from('memos')
       .update({
         title,
         body,
@@ -146,6 +189,7 @@ export default async function handler(request, response) {
       response.status(500).json({ error: 'MEMO_UPDATE_FAILED' });
       return;
     }
+
     if (!data) {
       response.status(403).json({ error: 'MEMO_FORBIDDEN' });
       return;
@@ -156,7 +200,8 @@ export default async function handler(request, response) {
   }
 
   if (request.method === 'DELETE') {
-    const { data: existing, error: fetchError } = await client.from('memos')
+    const { data: existing, error: fetchError } = await client
+      .from('memos')
       .select('id,owner_id')
       .eq('id', id)
       .maybeSingle();
@@ -165,16 +210,19 @@ export default async function handler(request, response) {
       response.status(500).json({ error: 'MEMO_FETCH_FAILED' });
       return;
     }
+
     if (!existing) {
       response.status(404).json({ error: 'MEMO_NOT_FOUND' });
       return;
     }
+
     if (existing.owner_id !== identity.userId) {
       response.status(403).json({ error: 'MEMO_FORBIDDEN' });
       return;
     }
 
-    const { data, error } = await client.from('memos')
+    const { data, error } = await client
+      .from('memos')
       .delete()
       .eq('id', id)
       .eq('owner_id', identity.userId)
@@ -185,6 +233,7 @@ export default async function handler(request, response) {
       response.status(500).json({ error: 'MEMO_DELETE_FAILED' });
       return;
     }
+
     if (!data) {
       response.status(403).json({ error: 'MEMO_FORBIDDEN' });
       return;
@@ -196,3 +245,4 @@ export default async function handler(request, response) {
 
   response.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
 }
+```
