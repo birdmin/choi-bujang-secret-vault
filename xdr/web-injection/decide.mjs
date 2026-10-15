@@ -45,16 +45,16 @@ function decide(alert) {
 
   // Clear attack signatures must be present in request arguments, not just alert prose.
   const clearSql = SQL_SYNTAX.test(payload)
-    || /(?:^|[?&=\\s])(?:sql-chain|sql-or|sql-select-chain)(?:$|[&\\s])/i.test(argumentText);
+    || /(?:^|[?&=\s])(?:sql-chain|sql-or|sql-select-chain)(?:$|[&\s])/i.test(argumentText);
   const clearScript = SCRIPT_TAG.test(payload)
-    || /(?:^|[?&=\\s])script-marker(?:$|[&\\s])/i.test(argumentText);
+    || /(?:^|[?&=\s])script-marker(?:$|[&\s])/i.test(argumentText);
   const traversalCount = (payload.match(TRAVERSAL) || []).length;
   const clearTraversal = traversalCount >= 2
-    || /(?:^|[?&=\\s])up-repeat(?:$|[&\\s])/i.test(argumentText);
+    || /(?:^|[?&=\s])up-repeat(?:$|[&\s])/i.test(argumentText);
   const clearSignal = clearSql || clearScript || clearTraversal;
 
   // Partial or mixed markers are alert-only; ordinary punctuation and words are not enough.
-  const markerSignal = /(?:^|[?&=\\s])(?:mixed-marker|cmd-separator|one-fragment|one-marker)(?:$|[&\\s])/i.test(argumentText);
+  const markerSignal = /(?:^|[?&=\s])(?:mixed-marker|cmd-separator|one-fragment|one-marker)(?:$|[&\s])/i.test(argumentText);
   const quoteEvidence = /따옴표/.test(description) && /반복은 없습니다/.test(description);
   const delimiterEvidence = /구분 문자/.test(description) && /1건/.test(description);
   const ambiguousSignal = markerSignal
