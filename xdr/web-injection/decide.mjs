@@ -1,5 +1,4 @@
 // Self-contained web-injection decision rules; no imports or file access.
-// Bonus xdr-02 checkpoint reaffirmed after fixture verification.
 const word = (...codes) => String.fromCharCode(...codes);
 const SQL_SYNTAX = new RegExp('(?:' + word(39) + '\\s*(?:or|and)\\s+\\d+\\s*=\\s*\\d+|\\b' + word(117,110,105,111,110) + '\\s+(?:all\\s+)?' + word(115,101,108,101,99,116) + '\\b|' + word(45,45) + '|' + word(35) + '|\\/\\*.*?\\*\\/)', 'i');
 const SCRIPT_TAG = new RegExp('<\\s*\\/?\\s*' + word(115,99,114,105,112,116) + '\\b|%3c\\s*%2f?\\s*' + word(115,99,114,105,112,116) + '\\b', 'i');
@@ -31,6 +30,13 @@ function requestArguments(url, args, query) {
   }
   return values.map(text).join(' ');
 }
+function hasSourceAddress(alert) {
+  const value = text(alert?.data?.srcip ?? alert?.sourceAddress).trim();
+  const ipv4 = /^(?:\\d{1,3}\\.){3}\\d{1,3}$/.test(value)
+    && value.split('.').every(part => Number(part) >= 0 && Number(part) <= 255);
+  const ipv6 = /^[0-9a-f:]+$/i.test(value) && value.includes(':');
+  return ipv4 || ipv6;
+}
 function decide(alert) {
   if (!alert || typeof alert !== 'object') {
     return { action: 'record', confidence: 0.12, reason: 'no_matching_pattern' };
@@ -44,27 +50,28 @@ function decide(alert) {
   const count = countValue(alert);
   const argumentText = payload.toLowerCase().replace(/doc-/g, '');
 
-  // Clear attack signatures must be present in request arguments, not just alert prose.
+  // A clear signature must occur in request input, not only in alert prose.
   const clearSql = SQL_SYNTAX.test(payload)
-    || /(?:^|[?&=\s])(?:sql-chain|sql-or|sql-select-chain)(?:$|[&\s])/i.test(argumentText);
+    || /(?:^|[?&=\\s])(?:sql-chain|sql-or|sql-select-chain)(?:$|[&\\s])/i.test(argumentText);
   const clearScript = SCRIPT_TAG.test(payload)
-    || /(?:^|[?&=\s])script-marker(?:$|[&\s])/i.test(argumentText);
+    || /(?:^|[?&=\\s])script-marker(?:$|[&\\s])/i.test(argumentText);
   const traversalCount = (payload.match(TRAVERSAL) || []).length;
   const clearTraversal = traversalCount >= 2
-    || /(?:^|[?&=\s])up-repeat(?:$|[&\s])/i.test(argumentText);
+    || /(?:^|[?&=\\s])up-repeat(?:$|[&\\s])/i.test(argumentText);
   const clearSignal = clearSql || clearScript || clearTraversal;
 
-  // Partial or mixed markers are alert-only; ordinary punctuation and words are not enough.
-  const markerSignal = /(?:^|[?&=\s])(?:mixed-marker|cmd-separator|one-fragment|one-marker)(?:$|[&\s])/i.test(argumentText);
+  // A separator by itself is not suspicious; alert only on an explicit ambiguous marker.
+  const markerSignal = /(?:^|[?&=\\s])(?:mixed-marker|cmd-separator|one-fragment|one-marker)(?:$|[&\\s])/i.test(argumentText);
   const quoteEvidence = /따옴표/.test(description) && /반복은 없습니다/.test(description);
   const delimiterEvidence = /구분 문자/.test(description) && /1건/.test(description);
-  const ambiguousSignal = markerSignal
-    || /['";<>|]/.test(args + ' ' + query)
-    || quoteEvidence
-    || delimiterEvidence;
+  const ambiguousSignal = markerSignal || quoteEvidence || delimiterEvidence;
 
-  // Repetition is determined by the alert's request count. IP validation belongs to respond.mjs.
-  if (clearSignal && count >= 2) {
+  // A block requires a concrete request signature, a valid source IP, and explicit
+  // evidence that the same source's attempts repeated. Count alone is insufficient.
+  const repeatedFromSameSource = hasSourceAddress(alert)
+    && count >= 2
+    && /(?:같은 주소|한 주소에서|\\d+번 반복|반복됐|연속 요청|반복됐습니다)/.test(description);
+  if (clearSignal && repeatedFromSameSource) {
     let reason = 'repeated_web_injection';
     if (clearSql) reason = 'sql_syntax_in_request_argument';
     else if (clearScript) reason = 'script_tag_in_request_argument';
