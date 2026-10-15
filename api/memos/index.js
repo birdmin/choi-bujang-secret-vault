@@ -36,6 +36,34 @@ async function authenticate(request, response) {
   }
 }
 
+async function requireApprovedDevice(request, response, identity, db) {
+  const token = request.headers['x-device-token'];
+  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{32,200}$/.test(token)) {
+    response.status(403).json({ error: 'DEVICE_NOT_APPROVED' });
+    return false;
+  }
+
+  const { createHash } = await import('node:crypto');
+  const tokenHash = createHash('sha256').update(token).digest('hex');
+  const { data, error } = await db
+    .from('device_approvals')
+    .select('id')
+    .eq('owner_id', identity.userId)
+    .eq('device_token_hash', tokenHash)
+    .eq('status', 'approved')
+    .maybeSingle();
+
+  if (error) {
+    response.status(503).json({ error: 'DEVICE_APPROVAL_CHECK_FAILED' });
+    return false;
+  }
+  if (!data) {
+    response.status(403).json({ error: 'DEVICE_NOT_APPROVED' });
+    return false;
+  }
+  return true;
+}
+
 function validUuid(value) {
   return typeof value === 'string' &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -47,6 +75,7 @@ export default async function handler(request, response) {
   if (!identity) return;
 
   const db = supabase();
+  if (!(await requireApprovedDevice(request, response, identity, db))) return;
 
   if (request.method === 'GET') {
     const { data, error } = await db
