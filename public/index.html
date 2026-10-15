@@ -369,38 +369,6 @@
     let serverDeviceApproved = false;
     let pendingInstallPrompt = null;
 
-    const SESSION_STORAGE_KEY = 'byte-back-session';
-
-    // 로그인 세션만 현재 탭의 sessionStorage에 보관합니다.
-    // 기기 토큰은 브라우저 저장소에 보관하지 않습니다.
-    function restoreCurrentSession() {
-      try {
-        const saved = JSON.parse(
-          sessionStorage.getItem(SESSION_STORAGE_KEY) || 'null'
-        );
-
-        if (saved?.access_token && saved?.user?.email) {
-          return saved;
-        }
-      } catch {
-        // 저장된 세션이 잘못되었으면 로그인 화면을 표시합니다.
-      }
-
-      sessionStorage.removeItem(SESSION_STORAGE_KEY);
-      return null;
-    }
-
-    function saveCurrentSession() {
-      if (currentSession?.access_token && currentSession?.user?.email) {
-        sessionStorage.setItem(
-          SESSION_STORAGE_KEY,
-          JSON.stringify(currentSession)
-        );
-      } else {
-        sessionStorage.removeItem(SESSION_STORAGE_KEY);
-      }
-    }
-
     function updateDeviceApprovalStatus() {
       deviceApprovalStatus.textContent = serverDeviceApproved
         ? '서버 승인 확인 완료'
@@ -628,7 +596,6 @@
           user: data.user
         };
 
-        saveCurrentSession();
         passwordInput.value = '';
 
         showLoggedIn(data.user.email);
@@ -649,7 +616,6 @@
       showStatus('로그아웃 중입니다.');
 
       currentSession = null;
-      sessionStorage.removeItem(SESSION_STORAGE_KEY);
       serverDeviceApproved = false;
 
       showLoggedOut();
@@ -778,88 +744,4 @@
 
         renderMemos(Array.isArray(data.memos) ? data.memos : []);
         showMemoStatus('');
-      } catch (error) {
-        showMemoStatus(
-          '메모 불러오기 실패: ' + error.message,
-          'auth-error'
-        );
-      }
-    }
-
-    memoForm.addEventListener('submit', async event => {
-      event.preventDefault();
-
-      if (!currentSession?.access_token || !serverDeviceApproved) {
-        showMemoStatus('승인된 기기에서만 메모를 변경할 수 있습니다.', 'auth-error');
-        return;
-      }
-
-      memoSubmit.disabled = true;
-
-      try {
-        const id = memoIdInput.value.trim();
-
-        const payload = {
-          title: memoTitleInput.value.trim(),
-          body: memoBodyInput.value
-        };
-
-        const response = await fetch(
-          id
-            ? '/api/memos/' + encodeURIComponent(id)
-            : '/api/memos',
-          {
-            method: id ? 'PUT' : 'POST',
-            credentials: 'same-origin',
-            headers: memoHeaders(),
-            body: JSON.stringify(payload)
-          }
-        );
-
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(data.error || 'MEMO_SAVE_FAILED');
-        }
-
-        showMemoStatus(
-          id ? '메모를 수정했습니다.' : '메모를 추가했습니다.',
-          'auth-success'
-        );
-
-        resetMemoForm();
-        await loadMemos();
-      } catch (error) {
-        showMemoStatus('저장 실패: ' + error.message, 'auth-error');
-      } finally {
-        memoSubmit.disabled = false;
-      }
-    });
-
-    memoCancel.addEventListener('click', () => {
-      resetMemoForm();
-      showMemoStatus('');
-    });
-
-    updateConnectionStatus();
-
-    // 새로고침 후에도 로그인 세션을 복구하되,
-    // 보호 자료는 서버가 기기 승인을 다시 확인한 뒤에만 요청합니다.
-    currentSession = restoreCurrentSession();
-
-    if (currentSession) {
-      showLoggedIn(currentSession.user.email);
-
-      (async () => {
-        if (await verifyDeviceApproval()) {
-          await loadMemos();
-        }
-      })();
-    } else {
-      showLoggedOut();
-    }
-  </script>
-</body>
-
-</html>
-```
+      } catch (
