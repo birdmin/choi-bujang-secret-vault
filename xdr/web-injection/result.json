@@ -28,15 +28,15 @@
     },
     {
       "alertId": "wi-05",
-      "action": "block",
-      "confidence": 0.96,
-      "reason": "repeated_mixed_web_injection"
+      "action": "alert",
+      "confidence": 0.58,
+      "reason": "possible_web_injection_unconfirmed"
     },
     {
       "alertId": "wi-06",
-      "action": "block",
-      "confidence": 0.96,
-      "reason": "repeated_command_separator_injection"
+      "action": "alert",
+      "confidence": 0.58,
+      "reason": "possible_web_injection_unconfirmed"
     },
     {
       "alertId": "wi-07",
@@ -160,8 +160,8 @@
     }
   ],
   "counts": {
-    "block": 8,
-    "alert": 2,
+    "block": 6,
+    "alert": 4,
     "record": 16
   }
 }
