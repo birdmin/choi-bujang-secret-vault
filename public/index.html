@@ -553,7 +553,8 @@
     function memoHeaders() {
       return {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + currentSession.access_token
+        Authorization: 'Bearer ' + currentSession.access_token,
+        'x-device-token': getDeviceToken()
       };
     }
 
@@ -607,9 +608,7 @@
             '/api/memos/' + encodeURIComponent(memo.id),
             {
               method: 'DELETE',
-              headers: {
-                Authorization: 'Bearer ' + currentSession.access_token
-              }
+              headers: memoHeaders()
             }
           );
 
@@ -641,9 +640,7 @@
       try {
         const response = await fetch('/api/memos', {
           cache: 'no-store',
-          headers: {
-            Authorization: 'Bearer ' + currentSession.access_token
-          }
+          headers: memoHeaders()
         });
 
         const data = await response.json();
