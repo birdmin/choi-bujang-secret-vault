@@ -1,0 +1,19 @@
+{
+  "patterns": [
+    {
+      "name": "sql_syntax_in_request_argument",
+      "condition": "A request argument contains SQL control syntax such as a quote followed by OR, UNION SELECT, or a SQL comment marker; match the argument value, not ordinary prose elsewhere in the log.",
+      "evidence": "MITRE ATT&CK T1190 covers attempts to exploit a public-facing application; SQL control syntax in an input argument is a concrete indicator to investigate for that technique, not proof of successful exploitation."
+    },
+    {
+      "name": "script_tag_in_request_argument",
+      "condition": "A request argument contains an HTML script tag opening or closing sequence, such as <script or </script, indicating possible script injection.",
+      "evidence": "MITRE ATT&CK T1190 covers exploitation attempts against public-facing applications; a script tag submitted as input is a concrete web-injection indicator to investigate, not proof that the script executed."
+    },
+    {
+      "name": "repeated_parent_directory_traversal",
+      "condition": "A single request argument contains two or more ../ or ..\\ sequences, including URL-encoded variants such as %2e%2e%2f, suggesting repeated parent-directory traversal.",
+      "evidence": "MITRE ATT&CK T1190 covers attempts to exploit public-facing applications; repeated parent-directory traversal sequences in an input are a concrete path-manipulation indicator to investigate, not proof of successful exploitation."
+    }
+  ]
+}
