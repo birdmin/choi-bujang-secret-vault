@@ -32,6 +32,16 @@ export async function runAttackChecks(config) {
   }
 
   const results = [];
+  // Record evidence from the response actually received. Prefer the request ID
+  // supplied by the server/platform; never fabricate one if no ID is exposed.
+  const responseEvidence = (response) => {
+    const requestId = response.headers.get('x-request-id')
+      || response.headers.get('request-id')
+      || response.headers.get('x-vercel-id')
+      || 'not_provided_by_response';
+    const checkedAt = new Date().toISOString();
+    return `HTTP ${response.status}; requestId=${requestId}; checkedAt=${checkedAt}`;
+  };
   const checkedFetch = async (label, url, options = {}) => {
     try {
       return await fetch(url, options);
@@ -72,8 +82,8 @@ export async function runAttackChecks(config) {
     attackId: 'anonymous_memo_list_read',
     expected: '비로그인 메모 목록 요청은 JSON 401/403으로 차단됨',
     observed: memoResponse.status === 401 || memoResponse.status === 403
-      ? '비로그인 /api/notes가 JSON 오류로 차단됨 (HTTP ' + memoResponse.status + ')'
-      : '비로그인 /api/notes가 예상 상태가 아님 (HTTP ' + memoResponse.status + ', JSON ' + (memoJson !== null ? '확인' : '없음') + ')',
+      ? '비로그인 /api/notes가 JSON 오류로 차단됨 (HTTP ' + memoResponse.status + '); ' + responseEvidence(memoResponse)
+      : '비로그인 /api/notes가 예상 상태가 아님 (HTTP ' + memoResponse.status + ', JSON ' + (memoJson !== null ? '확인' : '없음') + '); ' + responseEvidence(memoResponse),
   });
 
   const alephResponse = await checkedFetch('anonymous_runtime_config_read', new URL('/aleph.json', app), {
@@ -105,8 +115,8 @@ export async function runAttackChecks(config) {
     attackId: 'anonymous_runtime_config_read',
     expected: '배포된 /aleph.json에 allowedRoutes와 원본 HTTPS API 경로가 포함되어 있어야 함',
     observed: deploymentIdentityComplete
-      ? '배포된 /aleph.json에서 allowedRoutes와 originalApiUrl 확인 (HTTP ' + alephResponse.status + ')'
-      : '배포된 /aleph.json의 배포 식별 정보가 설정과 일치하지 않음 (HTTP ' + alephResponse.status + ')',
+      ? '배포된 /aleph.json에서 allowedRoutes와 originalApiUrl 확인 (HTTP ' + alephResponse.status + '); ' + responseEvidence(alephResponse)
+      : '배포된 /aleph.json의 배포 식별 정보가 설정과 일치하지 않음 (HTTP ' + alephResponse.status + '); ' + responseEvidence(alephResponse),
   });
 
   const indexResponse = await checkedFetch('response_header_nosniff', new URL('/', app), {
@@ -123,8 +133,8 @@ export async function runAttackChecks(config) {
     attackId: 'browser_supabase_public_key_exposure',
     expected: '첫 화면 코드에 Supabase 공개 키(sb_publishable_ 또는 anon 키)가 없어야 함',
     observed: hasPublicSupabaseKey
-      ? '첫 화면 코드에서 Supabase 공개 키 패턴이 발견됨'
-      : '첫 화면 코드에서 Supabase 공개 키 패턴을 찾지 못함',
+      ? '첫 화면 코드에서 Supabase 공개 키 패턴이 발견됨; ' + responseEvidence(indexResponse)
+      : '첫 화면 코드에서 Supabase 공개 키 패턴을 찾지 못함; ' + responseEvidence(indexResponse),
   });
 
   let originalApi;
@@ -154,8 +164,8 @@ export async function runAttackChecks(config) {
     attackId: 'original_api_direct_read',
     expected: '원본 자료 API를 공개 키 없이 직접 요청해도 자료가 노출되지 않아야 함',
     observed: originalApiResponse.status === 401 || originalApiResponse.status === 403
-      ? '원본 자료 API 직접 요청이 인증 오류로 차단됨 (HTTP ' + originalApiResponse.status + ')'
-      : '원본 자료 API 직접 요청이 예상 상태가 아님 (HTTP ' + originalApiResponse.status + ')',
+      ? '원본 자료 API 직접 요청이 인증 오류로 차단됨 (HTTP ' + originalApiResponse.status + '); ' + responseEvidence(originalApiResponse)
+      : '원본 자료 API 직접 요청이 예상 상태가 아님 (HTTP ' + originalApiResponse.status + '); ' + responseEvidence(originalApiResponse),
   });
 
   const nosniff = indexResponse.headers.get('x-content-type-options');
@@ -164,8 +174,8 @@ export async function runAttackChecks(config) {
     attackId: 'response_header_nosniff',
     expected: '첫 화면 응답에 X-Content-Type-Options: nosniff가 적용됨',
     observed: nosniff?.toLowerCase() === 'nosniff'
-      ? '첫 화면 응답에서 X-Content-Type-Options: nosniff 확인'
-      : '첫 화면 응답의 X-Content-Type-Options가 예상값이 아님 (' + (nosniff ?? '없음') + ')',
+      ? '첫 화면 응답에서 X-Content-Type-Options: nosniff 확인; ' + responseEvidence(indexResponse)
+      : '첫 화면 응답의 X-Content-Type-Options가 예상값이 아님 (' + (nosniff ?? '없음') + '); ' + responseEvidence(indexResponse),
   });
 
   return results;
