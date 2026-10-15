@@ -29,13 +29,13 @@
     {
       "alertId": "wi-05",
       "action": "alert",
-      "confidence": 0.58,
+      "confidence": 0.62,
       "reason": "possible_web_injection_unconfirmed"
     },
     {
       "alertId": "wi-06",
       "action": "alert",
-      "confidence": 0.58,
+      "confidence": 0.62,
       "reason": "possible_web_injection_unconfirmed"
     },
     {
@@ -89,13 +89,13 @@
     {
       "alertId": "wi-15",
       "action": "alert",
-      "confidence": 0.58,
+      "confidence": 0.62,
       "reason": "possible_web_injection_unconfirmed"
     },
     {
       "alertId": "wi-16",
       "action": "alert",
-      "confidence": 0.58,
+      "confidence": 0.62,
       "reason": "possible_web_injection_unconfirmed"
     },
     {
