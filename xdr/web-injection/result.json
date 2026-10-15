@@ -28,9 +28,9 @@
     },
     {
       "alertId": "wi-05",
-      "action": "alert",
-      "confidence": 0.58,
-      "reason": "possible_web_injection_unconfirmed"
+      "action": "block",
+      "confidence": 0.96,
+      "reason": "repeated_mixed_web_injection"
     },
     {
       "alertId": "wi-06",
@@ -64,9 +64,9 @@
     },
     {
       "alertId": "wi-11",
-      "action": "alert",
-      "confidence": 0.68,
-      "reason": "script_tag_in_request_argument"
+      "action": "record",
+      "confidence": 0.12,
+      "reason": "no_matching_pattern"
     },
     {
       "alertId": "wi-12",
@@ -88,9 +88,9 @@
     },
     {
       "alertId": "wi-15",
-      "action": "record",
-      "confidence": 0.12,
-      "reason": "no_matching_pattern"
+      "action": "alert",
+      "confidence": 0.58,
+      "reason": "possible_web_injection_unconfirmed"
     },
     {
       "alertId": "wi-16",
@@ -160,8 +160,8 @@
     }
   ],
   "counts": {
-    "block": 6,
-    "alert": 4,
+    "block": 7,
+    "alert": 3,
     "record": 16
   }
 }
