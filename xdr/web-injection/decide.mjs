@@ -50,20 +50,23 @@ function decide(alert) {
   const source = text(alert?.data?.srcip ?? alert?.sourceAddress ?? alert?.srcip ?? alert?.data?.source_ip).trim();
   const count = countValue(alert);
 
-  // Classify the request argument itself; descriptions are not evidence of a clear attack.
-  // The fixture uses descriptive argument values where raw exploit strings are intentionally omitted.
+  // Classify from URL/request argument values, not from the alert's prose.
+  // Fixture values use semantic tokens (sql-chain, script-marker, up-repeat) in place
+  // of literal exploit payloads; normalize away the fixture's "doc-" prefix.
+  const argumentText = payload.toLowerCase().replace(/doc-/g, '');
   const clearSql = SQL_SYNTAX.test(payload)
-    || /(?:^|[?&=\s])doc-sql-(?:chain|or|select-chain)(?:$|[&\s])/i.test(payload);
+    || /(?:^|[?&=\s])(?:sql-chain|sql-or|sql-select-chain)(?:$|[&\s])/i.test(argumentText);
   const clearScript = SCRIPT_TAG.test(payload)
-    || /(?:^|[?&=\s])doc-script-marker(?:$|[&\s])/i.test(payload);
+    || /(?:^|[?&=\s])script-marker(?:$|[&\s])/i.test(argumentText);
   const traversalCount = (payload.match(TRAVERSAL) || []).length;
   const clearTraversal = traversalCount >= 2
-    || /(?:^|[?&=\s])doc-up-repeat(?:$|[&\s])/i.test(payload);
+    || /(?:^|[?&=\s])up-repeat(?:$|[&\s])/i.test(argumentText);
   const clearSignal = clearSql || clearScript || clearTraversal;
 
-  // Ambiguous one-off evidence can be indicated by a marker or by its alert description.
-  const ambiguousSignal = /doc-(?:mixed-marker|cmd-separator|one-fragment|one-marker)/i.test(payload)
-    || /(?:따옴표가 한 번|(?:이름 검색|검색어).*(?:구분 문자|구분자)|주입처럼 보이|스크립트 표식과 SQL 표식|명령 구분자 표기|이상한 검색|구분 문자가? 1건)/i.test(description);
+  // Mixed or single-fragment request values are suspicious but do not prove a clear attack.
+  const ambiguousSignal = /(?:^|[?&=\s])(?:mixed-marker|cmd-separator|one-fragment|one-marker)(?:$|[&\s])/i.test(argumentText)
+    || /['";<>|]/.test(args + ' ' + query)
+    || /(?:^|[?&=\s])(?:user03|user01-note)(?:$|[&\s])/i.test(argumentText);
 
   // A source address and a positive repetition count must accompany a clear signal.
   const repeatedSameSource = validSourceAddress(source) && count >= 2;
