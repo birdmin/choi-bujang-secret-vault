@@ -90,6 +90,7 @@ function decide(alert) {
 
   // The event's validated source IP plus its numeric repetition count are the
   // operational evidence. Do not depend on a localized alert description.
+  // Require both a valid source address and an explicit repeat count before blocking.
   const repeatedFromSameSource = hasSourceAddress(alert) && count >= 2;
   if (clearSignal && repeatedFromSameSource) {
     let reason = "repeated_web_injection";
