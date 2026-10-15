@@ -695,45 +695,28 @@
 
     form.addEventListener('submit', async event => {
       event.preventDefault();
-
       loginButton.disabled = true;
       showStatus('로그인 중입니다.');
 
       try {
         const response = await fetch('/api/auth/login', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             email: emailInput.value.trim(),
             password: passwordInput.value
           })
         });
-
         const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw data;
+        if (!data.access_token || !data.user?.email) throw { error: 'LOGIN_FAILED' };
 
-        if (!response.ok) {
-          throw data;
-        }
-
-        if (!data.access_token || !data.user?.email) {
-          throw { error: 'LOGIN_FAILED' };
-        }
-
-        currentSession = {
-          access_token: data.access_token,
-          user: data.user
-        };
-
+        currentSession = { access_token: data.access_token, user: data.user };
         passwordInput.value = '';
-
         showLoggedIn(data.user.email);
-
-        // 로그인 성공만으로 보호 자료를 열지 않습니다.
-        if (await verifyDeviceApproval()) {
-          await loadMemos();
-        }
+        if (await verifyDeviceApproval()) await loadMemos();
+        await refreshOpsRoom();
       } catch (error) {
         showStatus(explainAuthError(error), 'auth-error');
       } finally {
@@ -741,20 +724,50 @@
       }
     });
 
-    logoutButton.addEventListener('click', () => {
+    logoutButton.addEventListener('click', async () => {
       logoutButton.disabled = true;
       showStatus('로그아웃 중입니다.');
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'same-origin',
+          cache: 'no-store'
+        });
+      } finally {
+        currentSession = null;
+        serverDeviceApproved = false;
+        showLoggedOut();
+        refreshOpsRoom();
+        resetMemoForm();
+        memoList.replaceChildren();
+        memoPanel.hidden = true;
+        logoutButton.disabled = false;
+      }
+    });
 
-      currentSession = null;
-      serverDeviceApproved = false;
+    async function restoreSession() {
+      try {
+        const response = await fetch('/api/auth/session', {
+          method: 'GET',
+          credentials: 'same-origin',
+          cache: 'no-store'
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.access_token || !data.user?.email) {
+          showLoggedOut();
+          refreshOpsRoom();
+          return;
+        }
 
-      showLoggedOut();
-      refreshOpsRoom();
-      resetMemoForm();
-      memoList.replaceChildren();
-      memoPanel.hidden = true;
-
-      logoutButton.disabled = false;
+        currentSession = { access_token: data.access_token, user: data.user };
+        showLoggedIn(data.user.email);
+        if (await verifyDeviceApproval()) await loadMemos();
+        await refreshOpsRoom();
+      } catch {
+        showLoggedOut();
+        showStatus('저장된 서버 세션을 확인하지 못했습니다. 다시 로그인해 주세요.', 'auth-error');
+        refreshOpsRoom();
+      }
     });
 
     function showMemoStatus(message, type = '') {
@@ -936,8 +949,7 @@
     });
 
     updateConnectionStatus();
-    showLoggedOut();
-    refreshOpsRoom();
+    restoreSession();
   </script>
 </body>
 </html>
