@@ -59,7 +59,7 @@ function decide(alert) {
     || /경로를 여러 단계 거슬러 올라가는 표기|경로 이탈 표기/i.test(description);
   const clearSignal = clearSql || clearScript || clearTraversal;
 
-  const ambiguousSignal = /(?:한 번|1건|한 건).*(?:따옴표|구분 문자|표식|검색|주입)|(?:반복은 없|반복되지 않)|(?:처럼 보이)|(?:표식과 .*표식)|(?:명령 구분자)|(?:이상한 검색)|(?:구분 문자)/i.test(description)
+  const ambiguousSignal = /(?:따옴표가 한 번|(?:이름 검색|검색어).*(?:구분 문자|구분자)|주입처럼 보이|스크립트 표식과 SQL 표식|명령 구분자 표기|이상한 검색|구분 문자가? 1건)/i.test(description)
     || /doc-one-(?:fragment|marker)|doc-mixed-marker|doc-cmd-separator/i.test(payload);
 
   // Give an explicit, repeated attack precedence over weaker/ambiguous markers.
