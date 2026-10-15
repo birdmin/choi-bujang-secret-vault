@@ -16,9 +16,9 @@
     },
     {
       "alertId": "wi-03",
-      "action": "alert",
-      "confidence": 0.65,
-      "reason": "possible_web_injection_unconfirmed"
+      "action": "block",
+      "confidence": 0.94,
+      "reason": "repeated_path_traversal"
     },
     {
       "alertId": "wi-04",
@@ -46,9 +46,9 @@
     },
     {
       "alertId": "wi-08",
-      "action": "record",
-      "confidence": 0.05,
-      "reason": "no_matching_pattern"
+      "action": "block",
+      "confidence": 0.94,
+      "reason": "repeated_sql_injection"
     },
     {
       "alertId": "wi-09",
@@ -64,9 +64,9 @@
     },
     {
       "alertId": "wi-11",
-      "action": "alert",
-      "confidence": 0.65,
-      "reason": "possible_web_injection_unconfirmed"
+      "action": "record",
+      "confidence": 0.05,
+      "reason": "no_matching_pattern"
     },
     {
       "alertId": "wi-12",
@@ -82,9 +82,9 @@
     },
     {
       "alertId": "wi-14",
-      "action": "alert",
-      "confidence": 0.65,
-      "reason": "possible_web_injection_unconfirmed"
+      "action": "record",
+      "confidence": 0.05,
+      "reason": "no_matching_pattern"
     },
     {
       "alertId": "wi-15",
@@ -160,8 +160,8 @@
     }
   ],
   "counts": {
-    "block": 4,
-    "alert": 9,
-    "record": 13
+    "block": 6,
+    "alert": 6,
+    "record": 14
   }
 }
