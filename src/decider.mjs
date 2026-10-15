@@ -113,8 +113,6 @@ export function detect(request) {
 
   const deviceId = [
     request.deviceId,
-    request.device?.id,
-    request.identity?.deviceId,
     request.context?.deviceId,
     request.request?.deviceId,
   ].find(value => typeof value === 'string' && value.length > 0) ?? null;
@@ -141,7 +139,6 @@ export function detect(request) {
 
   const subject = [
     request.subjectId,
-    request.identity?.sub,
     request.subject,
     request.pseudonym,
   ].find(value => typeof value === 'string' && value.length > 0);
