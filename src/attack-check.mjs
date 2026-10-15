@@ -37,6 +37,9 @@ export async function runAttackChecks(config) {
   const responseEvidence = (response) => {
     const requestId = response.headers.get('x-request-id')
       || response.headers.get('request-id')
+      || response.headers.get('sb-request-id')
+      || response.headers.get('x-kong-request-id')
+      || response.headers.get('cf-ray')
       || response.headers.get('x-vercel-id')
       || 'not_provided_by_response';
     const checkedAt = new Date().toISOString();
