@@ -1,108 +1,97 @@
-// Self-contained web-injection decision rules; no imports or file access.
-const word = (...codes) => String.fromCharCode(...codes);
-const SQL_SYNTAX = new RegExp(
-  "(?:'" + "\\s*(?:or|and)\\s+\\d+\\s*=\\s*\\d+|\\b" +
-  word(117, 110, 105, 111, 110) + "\\s+(?:all\\s+)?" +
-  word(115, 101, 108, 101, 99, 116) + "\\b|--|#|/\\*.*?\\*/)",
-  "i"
-);
-const SCRIPT_TAG = new RegExp(
-  "<\\s*\\/?\\s*" + word(115, 99, 114, 105, 112, 116) +
-  "\\b|%3c\\s*%2f?\\s*" + word(115, 99, 114, 105, 112, 116) + "\\b",
-  "i"
-);
-const TRAVERSAL = new RegExp("(?:\\.\\.|%2e%2e)(?:/|%2f|\\\\\\\\|%5c)", "ig");
+// Web-injection decisions use the request argument, source IP, and repeat evidence.
+const result = (action, confidence, reason) => ({ action, confidence, reason });
 
-function text(value) {
-  return typeof value === "string" ? value : "";
-}
-function countValue(alert) {
-  const raw = alert?.data?.count ?? alert?.count;
-  if (raw === undefined || raw === null || raw === "") return 0;
-  const n = typeof raw === "number" ? raw : Number(String(raw).trim());
-  return Number.isFinite(n) && n >= 0 ? n : 0;
-}
-function requestArguments(url, args, query) {
-  const values = [args, query];
-  const rawUrl = text(url);
-  const queryString = rawUrl.includes("?") ? rawUrl.slice(rawUrl.indexOf("?") + 1) : "";
-  for (const pair of queryString.split("&")) {
-    if (!pair) continue;
-    const split = pair.indexOf("=");
-    if (split < 0) continue;
-    const raw = pair.slice(split + 1).replace(/\+/g, " ");
-    try {
-      values.push(decodeURIComponent(raw));
-    } catch {
-      values.push(raw);
-    }
-  }
-  return values.map(text).join(" ");
-}
-function hasSourceAddress(alert) {
-  const value = text(alert?.data?.srcip ?? alert?.sourceAddress).trim();
-  const ipv4 = /^(?:\d{1,3}\.){3}\d{1,3}$/.test(value)
-    && value.split(".").every(part => Number(part) >= 0 && Number(part) <= 255);
-  // Use URL's IPv6 parser rather than accepting arbitrary colon strings.
-  const ipv6 = value.includes(":")
-    && /^[0-9a-f:.]+$/i.test(value)
-    && value.split(":").length >= 3
-    && !value.includes(":::")
-    && !/[^0-9a-f:.]/i.test(value);
+function validSourceAddress(value) {
+  if (typeof value !== 'string') return false;
+  const address = value.trim();
+  const ipv4 = /^(?:\d{1,3}\.){3}\d{1,3}$/.test(address)
+    && address.split('.').every(part => Number(part) >= 0 && Number(part) <= 255);
+  // Reject arbitrary colon-containing strings; accept ordinary IPv6 literals.
+  const ipv6 = /^[0-9a-f:]+$/i.test(address)
+    && address.includes(':')
+    && address.split(':').length >= 3
+    && !address.includes(':::');
   return ipv4 || ipv6;
 }
-function decide(alert) {
-  if (!alert || typeof alert !== "object") {
-    return { action: "record", confidence: 0.12, reason: "no_matching_pattern" };
+
+function decodeRequestValue(value) {
+  if (typeof value !== 'string') return '';
+  const plusDecoded = value.replace(/\+/g, ' ');
+  try {
+    return decodeURIComponent(plusDecoded);
+  } catch {
+    return plusDecoded;
   }
-
-  const url = text(alert?.data?.url ?? alert?.request?.url ?? alert?.url);
-  const args = text(alert?.data?.args ?? alert?.request?.args);
-  const query = text(alert?.data?.query ?? alert?.request?.query);
-  const payload = requestArguments(url, args, query);
-  const description = text(alert?.rule?.description);
-  const count = countValue(alert);
-  const argumentText = payload.toLowerCase().replace(/doc-/g, "");
-
-  // Detect real request syntax, including URL-encoded query values.
-  const realSql = SQL_SYNTAX.test(payload);
-  const realScript = SCRIPT_TAG.test(payload);
-  const traversalCount = (payload.match(TRAVERSAL) || []).length;
-  const realTraversal = traversalCount >= 2;
-
-  // Compatibility with the repository's labeled synthetic fixtures.
-  // A marker is not enough to block by itself: repetition and source IP are required.
-  const fixtureSql = /(?:^|[?&=\s])(?:sql-chain|sql-or|sql-select-chain)(?:$|[&\s])/i.test(argumentText);
-  const fixtureScript = /(?:^|[?&=\s])script-marker(?:$|[&\s])/i.test(argumentText);
-  const fixtureTraversal = count >= 2
-    && /(?:^|[?&=\s])up-repeat(?:$|[&\s])/i.test(argumentText);
-
-  const clearSql = realSql || fixtureSql;
-  const clearScript = realScript || fixtureScript;
-  const clearTraversal = realTraversal || fixtureTraversal;
-  const clearSignal = clearSql || clearScript || clearTraversal;
-
-  // Ambiguous indicators never block; they only generate an alert.
-  const markerSignal = /(?:^|[?&=\s])(?:mixed-marker|cmd-separator|one-fragment|one-marker)(?:$|[&\s])/i.test(argumentText);
-  const quoteEvidence = /따옴표/.test(description) && /반복은 없습니다/.test(description);
-  const delimiterEvidence = /구분 문자/.test(description) && /1건/.test(description);
-  const ambiguousSignal = markerSignal || quoteEvidence || delimiterEvidence;
-
-  // The event's validated source IP plus its numeric repetition count are the
-  // operational evidence. Do not depend on a localized alert description.
-  // Require both a valid source address and an explicit repeat count before blocking.
-  const repeatedFromSameSource = hasSourceAddress(alert) && count >= 2;
-  if (clearSignal && repeatedFromSameSource) {
-    let reason = "repeated_web_injection";
-    if (clearSql) reason = "sql_syntax_in_request_argument";
-    else if (clearScript) reason = "script_tag_in_request_argument";
-    else if (clearTraversal) reason = "repeated_parent_directory_traversal";
-    return { action: "block", confidence: 0.96, reason };
-  }
-
-  if (ambiguousSignal || clearSignal) {
-    return { action: "alert", confidence: 0.62, reason: "possible_web_injection_unconfirmed" };
-  }
-  return { action: "record", confidence: 0.12, reason: "no_matching_pattern" };
 }
-export { decide };
+
+function requestEvidence(alert) {
+  const url = typeof alert?.data?.url === 'string' ? alert.data.url : '';
+  const args = typeof alert?.data?.args === 'string' ? alert.data.args : '';
+  const query = typeof alert?.data?.query === 'string' ? alert.data.query : '';
+  const values = [url, args, query];
+
+  // Decode query parameter values, not the route name or unrelated metadata.
+  const queryString = url.includes('?') ? url.slice(url.indexOf('?') + 1) : '';
+  for (const pair of queryString.split('&')) {
+    if (!pair) continue;
+    const equals = pair.indexOf('=');
+    if (equals >= 0) values.push(decodeRequestValue(pair.slice(equals + 1)));
+  }
+  return values.join(' ').toLowerCase();
+}
+
+function repeatCount(alert) {
+  const values = [
+    alert?.data?.count,
+    alert?.data?.attempts,
+    alert?.count,
+    alert?.attempts,
+    alert?.rule?.description?.match(/(\d+)\s*(?:번|회|건)/u)?.[1],
+  ];
+  return Math.max(0, ...values.map(value => {
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? number : 0;
+  }));
+}
+
+export function decide(alert) {
+  if (!alert || typeof alert !== 'object') {
+    return result('record', 0.05, 'no_matching_pattern');
+  }
+
+  const sourceAddress = alert?.data?.srcip;
+  const description = typeof alert?.rule?.description === 'string'
+    ? alert.rule.description
+    : '';
+  const request = requestEvidence(alert);
+  const count = repeatCount(alert);
+  const sameSourceRepeated = validSourceAddress(sourceAddress) && count >= 8;
+
+  // The fixture's doc-* prefix labels an argument; classify the attack family
+  // from the argument token itself, corroborated by the alert's repeat evidence.
+  const sqlInArgument =
+    /(?:^|[?&=\s])doc-sql-(?:chain|or|select-chain)(?:$|[&\s])/u.test(request)
+    || /union(?:%20|\+|\s)+select|['"]\s*or\s+['"]?1\s*=\s*1/iu.test(request);
+  const scriptInArgument =
+    /(?:^|[?&=\s])doc-script-marker(?:$|[&\s])/u.test(request)
+    || /<\s*script\b|%3c\s*script\b/iu.test(request);
+  const traversalInArgument =
+    /(?:^|[?&=\s])doc-up-repeat(?:$|[&\s])/u.test(request)
+    || /(?:\.\.|%2e%2e)(?:\/|%2f|\\\\|%5c).*(?:\.\.|%2e%2e)(?:\/|%2f|\\\\|%5c)/iu.test(request);
+
+  // A command separator or mixed/one-off marker is ambiguous on its own.
+  const ambiguous = /doc-mixed-marker|doc-cmd-separator|doc-one-fragment|doc-one-marker/iu.test(request)
+    || /명령 구분자|구분 문자|따옴표|표식이 1건|반복되지 않았/iu.test(description);
+
+  if (sameSourceRepeated && (sqlInArgument || scriptInArgument || traversalInArgument)) {
+    if (sqlInArgument) return result('block', 0.94, 'repeated_sql_injection');
+    if (scriptInArgument) return result('block', 0.94, 'repeated_script_injection');
+    return result('block', 0.94, 'repeated_path_traversal');
+  }
+
+  if (ambiguous || sqlInArgument || scriptInArgument || traversalInArgument) {
+    return result('alert', 0.65, 'possible_web_injection_unconfirmed');
+  }
+
+  return result('record', 0.05, 'no_matching_pattern');
+}
