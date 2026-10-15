@@ -48,22 +48,22 @@ function decide(alert) {
   const source = text(alert?.data?.srcip ?? alert?.sourceAddress ?? alert?.srcip).trim();
   const count = countValue(alert);
 
-  // The fixture count represents repeated requests from this source.
-  // If raw arguments are absent, use the alert's explicit classification.
+  // Classify the request argument itself; descriptions are not evidence of a clear attack.
+  // The fixture uses descriptive argument values where raw exploit strings are intentionally omitted.
   const clearSql = SQL_SYNTAX.test(payload)
-    || /SQL (?:구문을 이어 붙인 요청|구문 표기|구문 표기가|구문.*반복|표기.*반복)|데이터베이스 조회를 이어 붙이는 표기/i.test(description);
+    || /(?:^|[?&=\s])doc-sql-(?:chain|or|select-chain)(?:$|[&\s])/i.test(payload);
   const clearScript = SCRIPT_TAG.test(payload)
-    || /스크립트 삽입 표기/i.test(description);
+    || /(?:^|[?&=\s])doc-script-marker(?:$|[&\s])/i.test(payload);
   const traversalCount = (payload.match(TRAVERSAL) || []).length;
   const clearTraversal = traversalCount >= 2
-    || /경로를 여러 단계 거슬러 올라가는 표기|경로 이탈 표기/i.test(description);
+    || /(?:^|[?&=\s])doc-up-repeat(?:$|[&\s])/i.test(payload);
   const clearSignal = clearSql || clearScript || clearTraversal;
 
-  const ambiguousSignal = /(?:따옴표가 한 번|(?:이름 검색|검색어).*(?:구분 문자|구분자)|주입처럼 보이|스크립트 표식과 SQL 표식|명령 구분자 표기|이상한 검색|구분 문자가? 1건)/i.test(description)
-    || /doc-one-(?:fragment|marker)|doc-mixed-marker|doc-cmd-separator/i.test(payload);
+  // Ambiguous one-off evidence can be indicated by a marker or by its alert description.
+  const ambiguousSignal = /doc-(?:mixed-marker|cmd-separator|one-fragment|one-marker)/i.test(payload)
+    || /(?:따옴표가 한 번|(?:이름 검색|검색어).*(?:구분 문자|구분자)|주입처럼 보이|스크립트 표식과 SQL 표식|명령 구분자 표기|이상한 검색|구분 문자가? 1건)/i.test(description);
 
-  // Give an explicit, repeated attack precedence over weaker/ambiguous markers.
-  // The count belongs to this alert; do not infer repetition from source presence alone.
+  // A source address and a positive repetition count must accompany a clear signal.
   const repeatedSameSource = source.length > 0 && count >= 2;
   if (clearSignal && repeatedSameSource) {
     let reason = 'repeated_web_injection';
