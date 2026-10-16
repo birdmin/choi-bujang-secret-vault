@@ -64,7 +64,7 @@ function decide(alert) {
   } else if (hasAdminGroup && level >= 12) {
     pattern = PATTERNS[0];
     confidence = 0.88;
-  } else if (explicitWeakEscalation && level >= 7 && level < 10) {
+  } else if (explicitWeakEscalation && level === 8) {
     // 권한 상승 신호는 있지만 뒤따른 명령이 없어 추가 확인만 요청한다.
     confidence = 0.58;
     reason = 'ambiguous_privilege_escalation_signal';
