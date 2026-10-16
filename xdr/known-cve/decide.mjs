@@ -36,7 +36,7 @@ const PATTERNS = Object.freeze([
 
 function hasJndiLookup(value) {
   if (typeof value !== 'string') return false;
-  return /\\$\\s*\\{\\s*jndi\\s*:\\s*(?:ldap|ldaps|rmi|dns|iiop|http|https)\\s*:/iu.test(value);
+  return /\$\s*\{\s*jndi\s*:\s*(?:ldap|ldaps|rmi|dns|iiop|http|https)\s*:/iu.test(value);
 }
 
 function hasPartialKnownCveSignal(alert) {
@@ -63,8 +63,8 @@ function hasPartialKnownCveSignal(alert) {
 
     // Full, supported expressions are handled as block above. This catches
     // partial JNDI lookup syntax, including a missing protocol or closing brace.
-    return /\\$\\s*\\{\\s*jndi(?:\\s*:\\s*(?:ldap|ldaps|rmi|dns|iiop|http|https)?(?:\\s*:\\s*[^}\\s]*)?)?/iu.test(text)
-      || /\\$\\s*\\{\\s*jnd\\s*:?/iu.test(text);
+    return /\$\s*\{\s*jndi(?:\s*:\s*(?:ldap|ldaps|rmi|dns|iiop|http|https)?(?:\s*:\s*[^}\s]*)?)?/iu.test(text)
+      || /\$\s*\{\s*jnd\s*:?/iu.test(text);
   });
 
   if (hasIncompleteLookup) return true;
