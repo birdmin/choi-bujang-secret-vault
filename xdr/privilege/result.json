@@ -94,9 +94,9 @@
     },
     {
       "alertId": "pv-16",
-      "action": "record",
-      "confidence": 0,
-      "reason": "구체적인 권한 악용 근거가 없어 기록"
+      "action": "alert",
+      "confidence": 0.52,
+      "reason": "failed_admin_command_requires_review"
     },
     {
       "alertId": "pv-17",
@@ -161,7 +161,7 @@
   ],
   "counts": {
     "block": 9,
-    "alert": 1,
-    "record": 16
+    "alert": 2,
+    "record": 15
   }
 }
