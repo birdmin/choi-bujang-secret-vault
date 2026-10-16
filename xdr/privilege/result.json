@@ -60,108 +60,108 @@
       "alertId": "pv-10",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-11",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-12",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-13",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-14",
       "action": "alert",
-      "confidence": 0.56,
+      "confidence": 0.58,
       "reason": "unfamiliar_admin_command"
     },
     {
       "alertId": "pv-15",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-16",
-      "action": "alert",
-      "confidence": 0.52,
-      "reason": "unfamiliar_admin_command"
+      "action": "record",
+      "confidence": 0,
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-17",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-18",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-19",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-20",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-21",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-22",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-23",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-24",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-25",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     },
     {
       "alertId": "pv-26",
       "action": "record",
       "confidence": 0,
-      "reason": "일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록"
+      "reason": "구체적인 권한 악용 근거가 없어 기록"
     }
   ],
   "counts": {
     "block": 9,
-    "alert": 2,
-    "record": 15
+    "alert": 1,
+    "record": 16
   }
 }
