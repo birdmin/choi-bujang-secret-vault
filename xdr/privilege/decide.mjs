@@ -30,9 +30,11 @@ function decide(alert) {
   const level = Number(alert && alert.rule && alert.rule.level);
   const hasAdminGroup = /administrators|관리자 그룹/.test(group + ' ' + description)
     && /추가|들어갔|들어왔|편입|추가됐|추가되/.test(description);
-  const hasAdminCommand = /관리자 명령|권한 명령/.test(description);
+  const hasAdminCommand = /관리자 명령|권한 명령|명령 실행/.test(description);
   const becameAdmin = /방금 관리자가 된|관리자 그룹에 들어가고 곧바로|그룹 추가와 명령 실행|관리자 권한으로 바뀌/.test(description);
   const otherAccountPrivilege = /다른 계정의 권한|처음 보는 주소|요청 주소는 처음/.test(description);
+  const unfamiliarAdminSession = /관리자 권한으로 바뀌/.test(description)
+    && /처음 보는 주소|처음 봅니다/.test(description);
   const outsideHours = /수업 시간 밖|업무처럼 보이지 않는 시각|업무 시간 밖/.test(description);
   const repeatedGroupChange = /다시 관리자로|계정 4개|반복/.test(description)
     || Number(alert && alert.data && alert.data.count) >= 2;
@@ -47,6 +49,9 @@ function decide(alert) {
   } else if (hasAdminCommand && (becameAdmin || otherAccountPrivilege) && level >= 10) {
     pattern = PATTERNS[1];
     confidence = 0.96;
+  } else if (unfamiliarAdminSession && level >= 10) {
+    pattern = PATTERNS[1];
+    confidence = 0.90;
   } else if (hasAdminCommand && outsideHours && level >= 10) {
     pattern = PATTERNS[2];
     confidence = 0.92;
