@@ -45,5 +45,35 @@ jobs:
             blockedNormalEvents: blockedNormal.length
           }, null, 2));
           NODE
+      - name: Test temporary deny candidates and audit log
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, rm } from 'node:fs/promises';
+          import { respond, ALERT_LOG_PATH } from './xdr/exfiltration/respond.mjs';
+          const fixture = JSON.parse(await readFile('xdr/fixtures/exfiltration.json', 'utf8'));
+          await rm(ALERT_LOG_PATH, { force: true });
+          const outcomes = [];
+          for (const alert of fixture.alerts) {
+            outcomes.push({ id: alert.id, ...(await respond(alert, { now: Date.parse('2026-10-16T00:00:00Z') })) });
+          }
+          const normalIds = new Set(['ex-21', 'ex-22', 'ex-23', 'ex-24', 'ex-25', 'ex-26', 'ex-27', 'ex-28', 'ex-29', 'ex-30']);
+          const normalCandidates = outcomes.filter((item) => normalIds.has(item.id) && item.denyRule);
+          if (normalCandidates.length) throw new Error('정상 이벤트에 차단 후보 생성: ' + JSON.stringify(normalCandidates.map((item) => item.id)));
+          const candidates = outcomes.filter((item) => item.denyRule);
+          if (candidates.some((item) => item.action !== 'block' || item.confidence < 0.85)) {
+            throw new Error('차단 외 판정에서 deny 후보가 생성됨');
+          }
+          if (candidates.some((item) => !item.denyRule.expiresAt || !item.denyRule.evidenceAlertId)) {
+            throw new Error('차단 후보에 만료 시각 또는 근거 경보 번호가 없음');
+          }
+          const lines = (await readFile(ALERT_LOG_PATH, 'utf8')).trim().split('\n');
+          if (lines.length !== fixture.alerts.length) throw new Error('감사 로그 줄 수가 경보 수와 다름');
+          console.log(JSON.stringify({
+            processed: outcomes.length,
+            denyCandidates: candidates.length,
+            normalDenyCandidates: normalCandidates.length,
+            auditLogLines: lines.length
+          }, null, 2));
+          NODE
       - name: Show complete decision result
         run: cat xdr/exfiltration/result.json
