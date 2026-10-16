@@ -36,7 +36,7 @@ const PATTERNS = Object.freeze([
 
 function hasJndiLookup(value) {
   if (typeof value !== 'string') return false;
-  return /\$\s*\{\s*jndi\s*:\s*(?:ldap|ldaps|rmi|dns|iiop|http|https)\s*:/iu.test(value);
+  return /\\$\\s*\\{\\s*jndi\\s*:\\s*(?:ldap|ldaps|rmi|dns|iiop|http|https)\\s*:/iu.test(value);
 }
 
 function hasPartialKnownCveSignal(alert) {
@@ -63,8 +63,8 @@ function hasPartialKnownCveSignal(alert) {
 
     // Full, supported expressions are handled as block above. This catches
     // partial JNDI lookup syntax, including a missing protocol or closing brace.
-    return /\$\s*\{\s*jndi(?:\s*:\s*(?:ldap|ldaps|rmi|dns|iiop|http|https)?(?:\s*:\s*[^}\s]*)?)?/iu.test(text)
-      || /\$\s*\{\s*jnd\s*:?/iu.test(text);
+    return /\\$\\s*\\{\\s*jndi(?:\\s*:\\s*(?:ldap|ldaps|rmi|dns|iiop|http|https)?(?:\\s*:\\s*[^}\\s]*)?)?/iu.test(text)
+      || /\\$\\s*\\{\\s*jnd\\s*:?/iu.test(text);
   });
 
   if (hasIncompleteLookup) return true;
@@ -79,7 +79,8 @@ function hasPartialKnownCveSignal(alert) {
 /**
  * Evaluate one Wazuh-shaped alert without I/O or external dependencies.
  * A full JNDI lookup expression is a clear known-exploit signal; weaker
- * CVE-related indicators are only reported for review.
+ * request-data indicators are only reported for review. A MITRE label alone
+ * is not evidence of an exploit attempt.
  */
 export function decide(alert) {
   for (const pattern of PATTERNS) {
@@ -97,17 +98,6 @@ export function decide(alert) {
       action: 'alert',
       confidence: 0.6,
       reason: 'known_cve_ambiguous_signal',
-    };
-  }
-
-  // 완전한 악용 구문은 없지만 T1190(외부 공개 앱 악용)으로 분류된 경보는
-  // 뚜렷하지 않은 악용 신호이므로 차단하지 않고 알림으로만 남긴다.
-  const mitre = Array.isArray(alert?.rule?.mitre) ? alert.rule.mitre : [];
-  if (mitre.includes('T1190')) {
-    return {
-      action: 'alert',
-      confidence: 0.55,
-      reason: 'known_cve_t1190_unconfirmed',
     };
   }
 
