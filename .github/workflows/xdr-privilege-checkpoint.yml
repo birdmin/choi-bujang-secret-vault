@@ -68,8 +68,8 @@ jobs:
           git add xdr/privilege/result.json
           if git diff --cached --quiet; then
             echo "result.json is unchanged; create the requested checkpoint commit."
-            git commit --allow-empty -m "보너스 xdr-05 권한 상승 시험 저장점"
+            git commit --allow-empty -m "보너스 xdr-05 저장점"
           else
-            git commit -m "보너스 xdr-05 권한 상승 시험 결과"
+            git commit -m "보너스 xdr-05 저장점"
           fi
           git push origin HEAD:main
