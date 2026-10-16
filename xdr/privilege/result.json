@@ -84,7 +84,7 @@
       "alertId": "pv-14",
       "action": "alert",
       "confidence": 0.58,
-      "reason": "unfamiliar_admin_command"
+      "reason": "ambiguous_privilege_escalation_signal"
     },
     {
       "alertId": "pv-15",
