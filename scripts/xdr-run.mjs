@@ -27,7 +27,7 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
   }
   const loaded = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'decide.mjs')).href);
   if (typeof loaded.decide !== 'function') throw new Error('decide 함수를 내보내지 않았습니다.');
-  const usesResponder = moduleKey === 'known-cve' || moduleKey === 'persistence';
+  const usesResponder = moduleKey === 'known-cve' || moduleKey === 'persistence' || moduleKey === 'privilege';
   const responder = usesResponder
     ? await import(pathToFileURL(join(root, 'xdr', moduleKey, 'respond.mjs')).href)
     : null;
