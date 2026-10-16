@@ -14,6 +14,8 @@ const PATTERNS = [
 ];
 
 const THRESHOLDS = Object.freeze({ block: 0.85, alert: 0.5 });
+const BLOCK_BYTES = 50000000; // 5천만 바이트 이상이면 대용량
+const MIN_ALERT_LEVEL = 5;    // 이보다 낮은 수준(정상 활동)은 기록만 한다
 
 function textOf(value) {
   return typeof value === 'string' ? value.toLowerCase() : '';
@@ -41,65 +43,36 @@ function result(confidence, reason) {
 export function decide(alert) {
   const description = textOf(alert?.rule?.description);
   const mitre = Array.isArray(alert?.rule?.mitre) ? alert.rule.mitre : [];
+  const level = num(alert?.rule?.level);
   const bytes = num(alert?.data?.bytes);
-  const files = num(alert?.data?.files);
-  const count = num(alert?.data?.count);
   const destination = textOf(alert?.data?.dstip);
   const sent = Boolean(destination) && bytes > 0;
 
+  const hasExfilMitre = mitre.includes('T1041') || mitre.includes('T1048');
   const unfamiliar =
     /처음 보는|낯선|평소와 다른|쓰지 않던 포트|unfamiliar|unknown destination/i
       .test(description);
-  const large =
-    bytes >= 50000000 ||
-    /대용량|큰 파일|자료실 전체|메모 묶음/i.test(description);
   const archive = /압축 파일|압축파일|archive|zip/i.test(description);
   const outside =
     /업무 시간 밖|업무시간 밖|수업 시간 밖|수업시간 밖|outside business hours|after hours/i
       .test(description);
-  const repeated =
-    count >= 8 || /\d+번 반복|연속 전송|반복됐습니다/i.test(description);
-  const noTransfer =
-    /외부 전송은 아직 없습니다|전송은 없습니다|파일 전송은 없습니다|전송이 실패/i
-      .test(description);
-  const normal =
-    /내 메모|반 공지|수업 자료 주소|검색 결과|화면 새로고침|로그아웃|세션 확인|다음 수업 공지|첨부 그림/i
-      .test(description);
 
-  // 외부 전송이 없거나 실패한 경우에는 차단하지 않는다.
-  if (noTransfer || !sent) {
-    return result(0.02, 'no_matching_exfiltration_pattern');
+  // 근거 패턴 이름: 업무 시간 밖 압축 반출이면 두 번째, 아니면 첫 번째
+  const patternName =
+    archive && outside ? PATTERNS[1].name : PATTERNS[0].name;
+
+  // 1) 명확한 공격: 목적지와 전송량이 있고, 5천만 바이트 이상이며,
+  //    T1041/T1048로 분류된 전송만 차단 후보로 둔다.
+  if (sent && bytes >= BLOCK_BYTES && hasExfilMitre) {
+    return result(unfamiliar ? 0.96 : 0.9, patternName);
   }
 
-  // 일상적인 앱 동작과 작은 정상 전송은 기록만 한다.
-  if (normal && bytes < 50000000 && !unfamiliar && !archive) {
-    return result(0.05, 'no_matching_exfiltration_pattern');
+  // 2) 애매한 시도: 유출 관련 분류(T1041/T1048)가 붙은 경보 중
+  //    정상 활동 수준(level 5 미만)이 아닌 것은 차단하지 않고 알림으로 남긴다.
+  if (hasExfilMitre && level >= MIN_ALERT_LEVEL) {
+    return result(0.65, patternName);
   }
 
-  // 처음 보는 목적지와 대용량 전송이 함께 확인된 경우
-  if (unfamiliar && large && bytes >= 50000000) {
-    return result(0.96, PATTERNS[0].name);
-  }
-
-  // 업무 시간 밖 압축 파일 반출과 낯선 목적지가 함께 확인된 경우
-  if (archive && outside && unfamiliar && bytes >= 50000000) {
-    return result(0.97, PATTERNS[1].name);
-  }
-
-  // 명령 통로를 통한 대용량 전송이 반복되는 경우
-  if (mitre.includes('T1041') && large && repeated && bytes >= 50000000) {
-    return result(0.88, PATTERNS[0].name);
-  }
-
-  // 업무 시간 밖 대용량 압축 파일 전송
-  if (archive && outside && bytes >= 50000000) {
-    return result(0.86, PATTERNS[1].name);
-  }
-
-  // 일부 의심 신호만 확인되면 추가 확인 대상으로 분류
-  if (unfamiliar || archive || outside || large || repeated || files >= 20 || count >= 3) {
-    return result(0.65, unfamiliar || large ? PATTERNS[0].name : PATTERNS[1].name);
-  }
-
-  return result(0.08, 'no_matching_exfiltration_pattern');
+  // 3) 그 밖의 정상·근거 없는 이벤트는 기록만 한다.
+  return result(0.05, 'no_matching_exfiltration_pattern');
 }
