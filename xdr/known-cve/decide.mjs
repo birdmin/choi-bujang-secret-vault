@@ -40,15 +40,40 @@ function hasJndiLookup(value) {
 }
 
 function hasPartialKnownCveSignal(alert) {
+  // Only inspect request data for an actual, incomplete lookup expression.
+  // CVE/JNDI words in descriptions or ordinary query values are not evidence.
+  const requestValues = [
+    alert?.data?.useragent,
+    alert?.data?.header,
+    alert?.data?.headers,
+    alert?.data?.url,
+    alert?.data?.uri,
+    alert?.data?.query,
+    alert?.data?.args,
+    alert?.data?.parameters,
+  ];
+
+  const hasIncompleteLookup = requestValues.some((value) => {
+    const text = typeof value === 'string'
+      ? value
+      : value && typeof value === 'object'
+        ? Object.values(value).filter((item) => typeof item === 'string').join(' ')
+        : '';
+    if (!text) return false;
+
+    // Full, supported expressions are handled as block above. This catches
+    // partial JNDI lookup syntax, including a missing protocol or closing brace.
+    return /\$\s*\{\s*jndi(?:\s*:\s*(?:ldap|ldaps|rmi|dns|iiop|http|https)?(?:\s*:\s*[^}\s]*)?)?/iu.test(text)
+      || /\$\s*\{\s*jnd\s*:?/iu.test(text);
+  });
+
+  if (hasIncompleteLookup) return true;
+
+  // A specific probe/scanner trace is an alert even without a payload.
   const description = String(alert?.rule?.description ?? '');
   const url = String(alert?.data?.url ?? '');
-  const userAgent = String(alert?.data?.useragent ?? '');
-  const text = [description, url, userAgent].join(' ');
-
-  if (/CVE-2021-44228/iu.test(text)) return true;
-  if (/\bjndi\b/iu.test(text)) return true;
-  if (/조회 형태가 잘린|조회 구문은 없습니다|중괄호가 한 번|점검 도구와 비슷한/iu.test(description)) return true;
-  return false;
+  return /점검 흔적|점검 도구|probe trace|vulnerability probe/iu.test(description)
+    || /(?:^|[/._-])(?:probe|scanner|class-check)(?:[/._?&=-]|$)/iu.test(url);
 }
 
 /**
