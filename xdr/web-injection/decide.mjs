@@ -70,7 +70,7 @@ export function decide(alert) {
   const hasRepeatedEvidence = repeats >= 2 && sourceIp.length > 0;
 
   if (families === 1 && hasRepeatedEvidence) {
-    if (sql) return result('block', 0.9, 'repeated_sql_injection');
+    if (sql) return result('block', 0.85, 'repeated_sql_injection');
     if (script) return result('block', 0.9, 'repeated_script_injection');
     return result('block', 0.9, 'repeated_path_traversal');
   }
@@ -80,7 +80,7 @@ export function decide(alert) {
     sqlSyntax || scriptSyntax || traversalHits.length === 1;
 
   if (weakSignal || families > 0) {
-    return result('alert', 0.6, 'possible_web_injection_unconfirmed');
+    return result('alert', 0.5, 'possible_web_injection_unconfirmed');
   }
   return result('record', 0.1, 'no_matching_pattern');
 }
