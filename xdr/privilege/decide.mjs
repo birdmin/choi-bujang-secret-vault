@@ -29,7 +29,7 @@ function decide(alert) {
   const group = text(alert && alert.data && alert.data.group);
   const level = Number(alert && alert.rule && alert.rule.level);
   const hasAdminGroup = /administrators|관리자 그룹/.test(group + ' ' + description)
-    && /추가|들어갔|들어왔|편입|추가됐|추가되/.test(description);
+    && /추가|들어갔|들어왔|편입|추가됐|추가되|다시 관리자로/.test(description);
   const hasAdminCommand = /관리자 명령|권한 명령|명령 실행/.test(description);
   const becameAdmin = /방금 관리자가 된|관리자 그룹에 들어가고 곧바로|그룹 추가와 명령 실행|관리자 권한으로 바뀌/.test(description);
   const otherAccountPrivilege = /다른 계정의 권한|처음 보는 주소|요청 주소는 처음/.test(description);
@@ -38,11 +38,15 @@ function decide(alert) {
   const outsideHours = /수업 시간 밖|업무처럼 보이지 않는 시각|업무 시간 밖/.test(description);
   const repeatedGroupChange = /다시 관리자로|계정 4개|반복/.test(description)
     || Number(alert && alert.data && alert.data.count) >= 2;
+  const cancelledOrFailed = /취소됐|취소되었|실패|취소/.test(description);
+  const explicitWeakEscalation = /권한 상승이 1건/.test(description)
+    && /명령은 없습니다|명령은 없|이어.*명령.*없/.test(description);
 
   let pattern = null;
   let confidence = 0;
-  let reason = '일치하는 권한 상승 패턴이 없어 정상 또는 근거 부족 이벤트로 기록';
+  let reason = '구체적인 권한 악용 근거가 없어 기록';
 
+  // 차단은 관리자 그룹 편입·관리자 명령·비정상 정황이 구체적으로 결합된 경우에 한정한다.
   if (hasAdminGroup && hasAdminCommand && level >= 10) {
     pattern = PATTERNS[1];
     confidence = 0.99;
@@ -61,18 +65,19 @@ function decide(alert) {
   } else if (hasAdminGroup && level >= 12) {
     pattern = PATTERNS[0];
     confidence = 0.88;
-  } else if (hasAdminGroup && level >= 9) {
-    pattern = PATTERNS[0];
-    confidence = 0.68;
   } else if (hasAdminCommand && level >= 10) {
     pattern = PATTERNS[1];
     confidence = 0.62;
-  } else if (/권한 상승/.test(description) && level >= 7) {
+  } else if (hasAdminGroup && level >= 9) {
+    pattern = PATTERNS[0];
+    confidence = 0.68;
+  } else if (explicitWeakEscalation && level >= 7 && level < 10) {
+    // 명시적인 권한 상승 신호는 있으나 뒤따른 명령이 없어 추가 확인만 요청한다.
     pattern = PATTERNS[1];
-    confidence = 0.56;
-  } else if (hasAdminCommand && /실패|취소/.test(description)) {
+    confidence = 0.58;
+  } else if (hasAdminCommand && level >= 8 && !cancelledOrFailed) {
     pattern = PATTERNS[1];
-    confidence = 0.52;
+    confidence = 0.55;
   }
 
   if (pattern) reason = pattern.name;
