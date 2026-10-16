@@ -75,11 +75,23 @@ export function decide(alert) {
     return result('block', 0.9, 'repeated_path_traversal');
   }
 
-  const weakSignal =
+    const weakSignal =
     /(?:스크립트 표식과 SQL 표식|명령 구분자 표기|따옴표가 한 번|이상한 검색|주입처럼 보이는 표기|구분 문자가)/iu.test(description) ||
     sqlSyntax || scriptSyntax || traversalHits.length === 1;
 
-  if (weakSignal || families > 0) {
+  // 주입 신호가 있고, 같은 주소에서 반복되면 명확한 시도 -> block
+  const hasInjectionSignal = families > 0 || weakSignal;
+
+  if (hasInjectionSignal && hasRepeatedEvidence) {
+    if (families >= 2) return result('block', 0.95, 'repeated_mixed_injection');
+    if (sql) return result('block', 0.85, 'repeated_sql_injection');
+    if (script) return result('block', 0.9, 'repeated_script_injection');
+    if (traversal) return result('block', 0.9, 'repeated_path_traversal');
+    return result('block', 0.88, 'repeated_injection_marker');
+  }
+
+  // 신호는 있지만 반복이 없으면 애매한 시도 -> alert
+  if (hasInjectionSignal) {
     return result('alert', 0.5, 'possible_web_injection_unconfirmed');
   }
   return result('record', 0.1, 'no_matching_pattern');
