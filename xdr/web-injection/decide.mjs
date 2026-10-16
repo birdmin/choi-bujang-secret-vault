@@ -2,7 +2,7 @@
 const PATTERNS = Object.freeze({
   sql: /(?:union\s+(?:all\s+)?select\b|['"]\s*(?:or|and)\s+['"]?\d+\s*=\s*\d+|--(?:\s|$)|%23)/iu,
   script: /<\s*\/?\s*script\b|%3c\s*\/?\s*script\b/iu,
-  traversal: /(?:\.\.|%2e%2e)(?:\/|%2f|\\\\|%5c)/iu,
+  traversal: /(?:\.\.|%2e%2e)(?:\/|%2f|\\|%5c)/iu,
 });
 const result = (action, confidence, reason) => ({ action, confidence, reason });
 
