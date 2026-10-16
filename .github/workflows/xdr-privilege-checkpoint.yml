@@ -1,0 +1,75 @@
+name: XDR Privilege Checkpoint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'xdr/privilege/**'
+      - 'xdr/fixtures/privilege.json'
+      - 'scripts/xdr-run.mjs'
+      - 'package.json'
+      - '.github/workflows/xdr-privilege-checkpoint.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-and-checkpoint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run privilege XDR fixture
+        run: npm run xdr:run -- privilege
+
+      - name: Show counts and check normal alerts
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const fixture = JSON.parse(readFileSync('xdr/fixtures/privilege.json', 'utf8'));
+          const result = JSON.parse(readFileSync('xdr/privilege/result.json', 'utf8'));
+          if (result.moduleKey !== 'privilege') throw new Error('잘못된 모듈 결과');
+          for (const key of ['block', 'alert', 'record']) {
+            if (!Number.isInteger(result.counts?.[key]) || result.counts[key] < 0) {
+              throw new Error('invalid_count_' + key);
+            }
+          }
+          if (result.decisions.length !== fixture.alerts.length) {
+            throw new Error('경보 수와 판정 수가 다릅니다.');
+          }
+          const normalIds = new Set([
+            'pv-10', 'pv-11', 'pv-12', 'pv-13', 'pv-15', 'pv-16', 'pv-17',
+            'pv-18', 'pv-19', 'pv-20', 'pv-21', 'pv-22', 'pv-23', 'pv-24', 'pv-25', 'pv-26'
+          ]);
+          const blockedNormal = result.decisions.filter(item => normalIds.has(item.alertId) && item.action === 'block');
+          console.log('counts=' + JSON.stringify(result.counts));
+          console.log('blocked_normal_count=' + blockedNormal.length);
+          if (blockedNormal.length) {
+            console.log('blocked_normal_ids=' + blockedNormal.map(item => item.alertId).join(','));
+            throw new Error('normal_event_blocked');
+          }
+          NODE
+
+      - name: Commit privilege result
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+users.noreply.github.com"
+          git add xdr/privilege/result.json
+          if git diff --cached --quiet; then
+            echo "result.json is unchanged; create the requested checkpoint commit."
+            git commit --allow-empty -m "보너스 xdr-05 권한 상승 시험 저장점"
+          else
+            git commit -m "보너스 xdr-05 권한 상승 시험 결과"
+          fi
+          git push origin HEAD:main
