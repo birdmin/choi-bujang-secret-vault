@@ -18,6 +18,12 @@ const PATTERNS = Object.freeze([
     mitre: ['T1068', 'T1078'],
     evidence: 'T1068과 T1078은 권한 상승 및 계정 악용과 관련되며, 업무 시간 밖 권한 사용은 이상 징후로 취급한다.',
   },
+  {
+    name: 'ambiguous_privilege_escalation_signal',
+    condition: 'T1068/T1078로 분류된 권한 관련 경보이지만 관리자 그룹 추가와 관리자 명령의 명확한 조합이 없다.',
+    mitre: ['T1068', 'T1078'],
+    evidence: 'T1068과 T1078로 분류된 경보는 권한 악용 가능성이 있어 조사 대상이지만, 단일 신호만으로는 차단 근거가 부족하다.',
+  },
 ]);
 
 function text(value) {
@@ -28,6 +34,8 @@ function decide(alert) {
   const description = text(alert && alert.rule && alert.rule.description);
   const group = text(alert && alert.data && alert.data.group);
   const level = Number(alert && alert.rule && alert.rule.level);
+  const mitre = Array.isArray(alert && alert.rule && alert.rule.mitre) ? alert.rule.mitre : [];
+  const hasPrivilegeMitre = mitre.includes('T1068') || mitre.includes('T1078');
   const hasAdminGroup = /administrators|관리자 그룹/.test(group + ' ' + description)
     && /추가|들어갔|들어왔|편입|추가됐|추가되|다시 관리자로/.test(description);
   const hasAdminCommand = /관리자 명령|권한 명령|명령 실행/.test(description);
@@ -38,8 +46,6 @@ function decide(alert) {
   const outsideHours = /수업 시간 밖|업무처럼 보이지 않는 시각|업무 시간 밖/.test(description);
   const repeatedGroupChange = /다시 관리자로|계정 4개|반복/.test(description)
     || Number(alert && alert.data && alert.data.count) >= 2;
-  const explicitWeakEscalation = /권한 상승이 1건/.test(description)
-    && /명령은 없습니다|명령은 없|이어.*명령.*없/.test(description);
 
   let pattern = null;
   let confidence = 0;
@@ -64,10 +70,10 @@ function decide(alert) {
   } else if (hasAdminGroup && level >= 12) {
     pattern = PATTERNS[0];
     confidence = 0.88;
-  } else if (explicitWeakEscalation && level === 8) {
-    // 권한 상승 신호는 있지만 뒤따른 명령이 없어 추가 확인만 요청한다.
+  } else if (hasPrivilegeMitre) {
+    // T1068/T1078로 분류된 약한 신호는 차단하지 않고 알림으로만 남긴다.
+    pattern = PATTERNS[3];
     confidence = 0.58;
-    reason = 'ambiguous_privilege_escalation_signal';
   }
 
   if (pattern) reason = pattern.name;
