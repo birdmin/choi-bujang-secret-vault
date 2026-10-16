@@ -24,3 +24,19 @@ jobs:
         run: npm ci
       - name: Run detection practice test
         run: npm run detect:test && node --test test/stage9-detect.test.mjs test/known-cve-response.test.mjs
+      - name: Replay known-CVE fixture
+        run: |
+          npm run xdr:run -- known-cve
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const result = JSON.parse(await readFile('xdr/known-cve/result.json', 'utf8'));
+          if (result.moduleKey !== 'known-cve') throw new Error('잘못된 모듈 결과');
+          if (result.counts.block !== 8 || result.counts.alert !== 6 || result.counts.record !== 10) {
+            throw new Error('예상과 다른 counts: ' + JSON.stringify(result.counts));
+          }
+          const normalIds = new Set(['kc-17', 'kc-18', 'kc-19', 'kc-20', 'kc-21', 'kc-22', 'kc-23', 'kc-24']);
+          const blockedNormal = result.decisions.filter((item) => normalIds.has(item.alertId) && item.action === 'block');
+          if (blockedNormal.length) throw new Error('정상 이벤트 차단: ' + JSON.stringify(blockedNormal));
+          console.log(JSON.stringify({ counts: result.counts, blockedNormalEvents: blockedNormal.length }, null, 2));
+          NODE
+          cat xdr/known-cve/result.json
