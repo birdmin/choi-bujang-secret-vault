@@ -64,12 +64,6 @@ function decide(alert) {
   } else if (hasAdminGroup && level >= 12) {
     pattern = PATTERNS[0];
     confidence = 0.88;
-  } else if (hasAdminCommand && level >= 10) {
-    pattern = PATTERNS[1];
-    confidence = 0.62;
-  } else if (hasAdminGroup && level >= 9) {
-    pattern = PATTERNS[0];
-    confidence = 0.68;
   } else if (explicitWeakEscalation && level >= 7 && level < 10) {
     // 권한 상승 신호는 있지만 뒤따른 명령이 없어 추가 확인만 요청한다.
     confidence = 0.58;
