@@ -46,7 +46,7 @@ function decide(alert) {
   let confidence = 0;
   let reason = '구체적인 권한 악용 근거가 없어 기록';
 
-  // 차단은 관리자 그룹 편입·관리자 명령·비정상 정황이 구체적으로 결합된 경우에 한정한다.
+  // 명확한 관리자 권한 악용만 차단한다.
   if (hasAdminGroup && hasAdminCommand && level >= 10) {
     pattern = PATTERNS[1];
     confidence = 0.99;
@@ -72,12 +72,13 @@ function decide(alert) {
     pattern = PATTERNS[0];
     confidence = 0.68;
   } else if (explicitWeakEscalation && level >= 7 && level < 10) {
-    // 명시적인 권한 상승 신호는 있으나 뒤따른 명령이 없어 추가 확인만 요청한다.
+    // 권한 상승 신호는 있지만 뒤따른 명령이 없어 추가 확인만 요청한다.
     confidence = 0.58;
     reason = 'ambiguous_privilege_escalation_signal';
-  } else if (hasAdminCommand && level >= 8 && !cancelledOrFailed) {
-    confidence = 0.55;
-    reason = 'unconfirmed_admin_command';
+  } else if (hasAdminCommand && cancelledOrFailed && level >= 7) {
+    // 실패한 관리자 명령은 공격 성공이 입증되지 않아 차단하지 않고 알림만 남긴다.
+    confidence = 0.52;
+    reason = 'failed_admin_command_requires_review';
   }
 
   if (pattern) reason = pattern.name;
