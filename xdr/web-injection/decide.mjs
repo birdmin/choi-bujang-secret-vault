@@ -51,6 +51,8 @@ export function decide(alert) {
   const args = requestArguments(alert);
   const repeats = repeatCount(alert);
   const sourceIp = typeof data.srcip === 'string' ? data.srcip.trim() : '';
+  const mitre = Array.isArray(alert?.rule?.mitre) ? alert.rule.mitre : [];
+  const t1190 = mitre.includes('T1190');
 
   const sqlSyntax = PATTERNS.sql.test(args);
   const scriptSyntax = PATTERNS.script.test(args);
@@ -69,19 +71,14 @@ export function decide(alert) {
   const families = Number(sql) + Number(script) + Number(traversal);
   const hasRepeatedEvidence = repeats >= 2 && sourceIp.length > 0;
 
-  if (families === 1 && hasRepeatedEvidence) {
-    if (sql) return result('block', 0.85, 'repeated_sql_injection');
-    if (script) return result('block', 0.9, 'repeated_script_injection');
-    return result('block', 0.9, 'repeated_path_traversal');
-  }
-
-    const weakSignal =
+  const weakSignal =
     /(?:스크립트 표식과 SQL 표식|명령 구분자 표기|따옴표가 한 번|이상한 검색|주입처럼 보이는 표기|구분 문자가)/iu.test(description) ||
     sqlSyntax || scriptSyntax || traversalHits.length === 1;
 
-  // 주입 신호가 있고, 같은 주소에서 반복되면 명확한 시도 -> block
-  const hasInjectionSignal = families > 0 || weakSignal;
+  // 주입 신호: 패턴 일치, 약한 신호 문구, 또는 T1190(외부 공개 앱 악용) 분류
+  const hasInjectionSignal = families > 0 || weakSignal || t1190;
 
+  // 신호가 있고 같은 주소에서 반복되면 명확한 시도 -> block
   if (hasInjectionSignal && hasRepeatedEvidence) {
     if (families >= 2) return result('block', 0.95, 'repeated_mixed_injection');
     if (sql) return result('block', 0.85, 'repeated_sql_injection');
