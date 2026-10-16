@@ -5,7 +5,7 @@
     {
       "alertId": "wi-01",
       "action": "block",
-      "confidence": 0.9,
+      "confidence": 0.85,
       "reason": "repeated_sql_injection"
     },
     {
@@ -23,19 +23,19 @@
     {
       "alertId": "wi-04",
       "action": "block",
-      "confidence": 0.9,
+      "confidence": 0.85,
       "reason": "repeated_sql_injection"
     },
     {
       "alertId": "wi-05",
       "action": "alert",
-      "confidence": 0.6,
+      "confidence": 0.5,
       "reason": "possible_web_injection_unconfirmed"
     },
     {
       "alertId": "wi-06",
       "action": "alert",
-      "confidence": 0.6,
+      "confidence": 0.5,
       "reason": "possible_web_injection_unconfirmed"
     },
     {
@@ -47,13 +47,13 @@
     {
       "alertId": "wi-08",
       "action": "block",
-      "confidence": 0.9,
+      "confidence": 0.85,
       "reason": "repeated_sql_injection"
     },
     {
       "alertId": "wi-09",
       "action": "alert",
-      "confidence": 0.6,
+      "confidence": 0.5,
       "reason": "possible_web_injection_unconfirmed"
     },
     {
@@ -89,19 +89,19 @@
     {
       "alertId": "wi-15",
       "action": "alert",
-      "confidence": 0.6,
+      "confidence": 0.5,
       "reason": "possible_web_injection_unconfirmed"
     },
     {
       "alertId": "wi-16",
       "action": "alert",
-      "confidence": 0.6,
+      "confidence": 0.5,
       "reason": "possible_web_injection_unconfirmed"
     },
     {
       "alertId": "wi-17",
       "action": "alert",
-      "confidence": 0.6,
+      "confidence": 0.5,
       "reason": "possible_web_injection_unconfirmed"
     },
     {
