@@ -23,4 +23,4 @@ jobs:
       - name: Install project dependencies
         run: npm ci
       - name: Run detection practice test
-        run: npm run detect:test && node --test test/stage9-detect.test.mjs
+        run: npm run detect:test && node --test test/stage9-detect.test.mjs test/known-cve-response.test.mjs
