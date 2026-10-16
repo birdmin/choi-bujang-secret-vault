@@ -73,11 +73,11 @@ function decide(alert) {
     confidence = 0.68;
   } else if (explicitWeakEscalation && level >= 7 && level < 10) {
     // 명시적인 권한 상승 신호는 있으나 뒤따른 명령이 없어 추가 확인만 요청한다.
-    pattern = PATTERNS[1];
     confidence = 0.58;
+    reason = 'ambiguous_privilege_escalation_signal';
   } else if (hasAdminCommand && level >= 8 && !cancelledOrFailed) {
-    pattern = PATTERNS[1];
     confidence = 0.55;
+    reason = 'unconfirmed_admin_command';
   }
 
   if (pattern) reason = pattern.name;
