@@ -27,6 +27,12 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
   }
   const loaded = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'decide.mjs')).href);
   if (typeof loaded.decide !== 'function') throw new Error('decide 함수를 내보내지 않았습니다.');
+  const responder = moduleKey === 'known-cve'
+    ? await import(pathToFileURL(join(root, 'xdr', moduleKey, 'respond.mjs')).href)
+    : null;
+  if (moduleKey === 'known-cve' && typeof responder?.respond !== 'function') {
+    throw new Error('known-cve respond 함수를 내보내지 않았습니다.');
+  }
 
   const decisions = [];
   const counts = { block: 0, alert: 0, record: 0 };
@@ -36,7 +42,9 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
     let confidence = 0;
     let reason = '반환 형식이 아닙니다';
     try {
-      const out = await loaded.decide(alert);
+      const out = moduleKey === 'known-cve'
+        ? await responder.respond(alert)
+        : await loaded.decide(alert);
       if (isDecision(out)) {
         action = out.action;
         confidence = out.confidence;
