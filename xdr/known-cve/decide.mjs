@@ -1,25 +1,28 @@
 const PATTERNS = Object.freeze([
   {
     name: 'log4shell_jndi_in_header',
-    matches: (alert) => {
-      const headers = [
-        alert?.data?.useragent,
-        alert?.data?.header,
-        alert?.data?.headers,
-      ];
-      return headers.some((value) => hasJndiLookup(value));
-    },
+    condition: 'A request header value contains a JNDI lookup expression using the ${jndi:...} form.',
+    evidence: 'CVE-2021-44228 (Log4Shell) exploitation commonly used JNDI lookup strings in request headers; MITRE ATT&CK T1190 covers exploitation of a public-facing application.',
+    matches: (alert) => [
+      alert?.data?.useragent,
+      alert?.data?.header,
+      alert?.data?.headers,
+    ].some(hasJndiLookup),
     confidence: 0.98,
     action: 'block',
   },
   {
     name: 'log4shell_jndi_in_argument',
+    condition: 'A request URL or parameter value contains a JNDI lookup expression using the ${jndi:...} form.',
+    evidence: 'CVE-2021-44228 exploitation attempts may place JNDI lookup strings in request parameters; MITRE ATT&CK T1190 covers exploitation of a public-facing application.',
     matches: (alert) => hasJndiLookup(alert?.data?.url),
     confidence: 0.98,
     action: 'block',
   },
   {
     name: 'known_vulnerability_probe_trace',
+    condition: 'An alert explicitly describes a known-vulnerability checking tool or probe trace; do not infer this from a generic library name, the word jndi, a CVE name alone, or a partial expression.',
+    evidence: 'The known-cve fixture includes an alert describing a checking-tool-like trace, and the task explicitly permits traces of known-vulnerability checking tools as a signal.',
     matches: (alert) => {
       const description = String(alert?.rule?.description ?? '');
       const url = String(alert?.data?.url ?? '');
