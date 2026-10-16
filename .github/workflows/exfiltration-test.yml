@@ -1,0 +1,49 @@
+name: Exfiltration XDR practice test
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exfiltration-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install project dependencies
+        run: npm ci
+      - name: Run exfiltration fixture
+        run: npm run xdr:run -- exfiltration
+      - name: Check result counts and normal events
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const result = JSON.parse(await readFile('xdr/exfiltration/result.json', 'utf8'));
+          if (result.moduleKey !== 'exfiltration') throw new Error('잘못된 모듈 결과');
+          if (result.decisions.length !== 30) throw new Error('경보 30건을 모두 처리하지 못했습니다.');
+          const mustBlock = new Set(['ex-01', 'ex-02', 'ex-03', 'ex-04', 'ex-05', 'ex-07', 'ex-09', 'ex-10']);
+          const blocked = new Set(result.decisions.filter((item) => item.action === 'block').map((item) => item.alertId));
+          const missed = [...mustBlock].filter((id) => !blocked.has(id));
+          if (missed.length) throw new Error('명확한 공격이 block 되지 않음: ' + missed.join(', '));
+          const normalIds = new Set(['ex-21', 'ex-22', 'ex-23', 'ex-24', 'ex-25', 'ex-26', 'ex-27', 'ex-28', 'ex-29', 'ex-30']);
+          const blockedNormal = result.decisions.filter((item) => normalIds.has(item.alertId) && item.action === 'block');
+          if (blockedNormal.length) throw new Error('정상 이벤트 차단: ' + JSON.stringify(blockedNormal));
+          console.log(JSON.stringify({
+            processed: result.decisions.length,
+            counts: result.counts,
+            requiredAttacksBlocked: mustBlock.size,
+            blockedNormalEvents: blockedNormal.length
+          }, null, 2));
+          NODE
+      - name: Show complete decision result
+        run: cat xdr/exfiltration/result.json
