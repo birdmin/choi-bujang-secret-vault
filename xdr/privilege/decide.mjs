@@ -38,7 +38,6 @@ function decide(alert) {
   const outsideHours = /수업 시간 밖|업무처럼 보이지 않는 시각|업무 시간 밖/.test(description);
   const repeatedGroupChange = /다시 관리자로|계정 4개|반복/.test(description)
     || Number(alert && alert.data && alert.data.count) >= 2;
-  const cancelledOrFailed = /취소됐|취소되었|실패|취소/.test(description);
   const explicitWeakEscalation = /권한 상승이 1건/.test(description)
     && /명령은 없습니다|명령은 없|이어.*명령.*없/.test(description);
 
@@ -75,10 +74,6 @@ function decide(alert) {
     // 권한 상승 신호는 있지만 뒤따른 명령이 없어 추가 확인만 요청한다.
     confidence = 0.58;
     reason = 'ambiguous_privilege_escalation_signal';
-  } else if (hasAdminCommand && cancelledOrFailed && level >= 7) {
-    // 실패한 관리자 명령은 공격 성공이 입증되지 않아 차단하지 않고 알림만 남긴다.
-    confidence = 0.52;
-    reason = 'failed_admin_command_requires_review';
   }
 
   if (pattern) reason = pattern.name;
