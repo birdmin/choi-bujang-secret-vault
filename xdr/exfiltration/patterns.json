@@ -1,0 +1,18 @@
+{
+  "schema": "aleph.xdr.exfiltration-patterns.v1",
+  "moduleKey": "exfiltration",
+  "patterns": [
+    {
+      "name": "large_transfer_to_unfamiliar_destination",
+      "condition": "경보에 처음 보는 목적지로의 대용량 자료 전송이 명시되어 있거나, 목적지가 익숙하지 않다는 신호와 큰 전송량이 함께 확인된다.",
+      "mitre": ["T1041", "T1048"],
+      "evidence": "MITRE ATT&CK T1041은 명령·제어 통로를 통한 유출, T1048은 대체 프로토콜을 통한 유출을 다루며, 처음 보는 목적지로의 대용량 전송은 조사할 구체적인 유출 신호다."
+    },
+    {
+      "name": "archive_transfer_outside_business_hours",
+      "condition": "업무 시간 밖에 압축 파일이 외부 또는 처음 보는 목적지로 전송된 정황이 경보에 함께 나타난다.",
+      "mitre": ["T1048"],
+      "evidence": "MITRE ATT&CK T1048은 대체 프로토콜을 통한 유출을 다루며, 업무 시간 밖의 압축 파일 반출은 단독 확정 증거가 아니라 외부 유출 가능성을 조사할 신호다."
+    }
+  ]
+}
