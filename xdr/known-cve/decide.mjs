@@ -100,6 +100,17 @@ export function decide(alert) {
     };
   }
 
+  // 완전한 악용 구문은 없지만 T1190(외부 공개 앱 악용)으로 분류된 경보는
+  // 뚜렷하지 않은 악용 신호이므로 차단하지 않고 알림으로만 남긴다.
+  const mitre = Array.isArray(alert?.rule?.mitre) ? alert.rule.mitre : [];
+  if (mitre.includes('T1190')) {
+    return {
+      action: 'alert',
+      confidence: 0.55,
+      reason: 'known_cve_t1190_unconfirmed',
+    };
+  }
+
   return {
     action: 'record',
     confidence: 0.1,
