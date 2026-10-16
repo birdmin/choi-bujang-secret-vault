@@ -1,0 +1,24 @@
+{
+  "schema": "aleph.xdr.patterns.v1",
+  "moduleKey": "privilege",
+  "patterns": [
+    {
+      "name": "unexpected_admin_group_addition",
+      "condition": "경보 설명 또는 group 필드에서 계정이 administrators 그룹에 추가된 사실이 확인된다.",
+      "mitre": ["T1078"],
+      "evidence": "T1078은 유효한 계정의 악용을 다루며, 일반 계정의 예기치 않은 관리자 그룹 편입은 계정 권한 악용을 살펴볼 신호다."
+    },
+    {
+      "name": "unfamiliar_admin_command",
+      "condition": "경보 설명에 관리자 명령 실행이 나타나고, 해당 계정의 권한 상승이나 처음 보는 출발 주소 등 비정상 정황이 함께 확인된다.",
+      "mitre": ["T1068", "T1078"],
+      "evidence": "T1068은 권한 상승 악용, T1078은 유효 계정 악용과 관련되며, 비정상 정황과 결합한 관리자 명령은 두 가능성을 조사할 근거가 된다."
+    },
+    {
+      "name": "admin_use_outside_work_hours",
+      "condition": "경보 시각이 업무 시간 밖이고, 설명에 관리자 그룹 변경 또는 관리자 권한 사용이 명시되어 있다.",
+      "mitre": ["T1068", "T1078"],
+      "evidence": "T1068과 T1078은 권한 상승 및 계정 악용의 근거이며, 업무 시간 밖의 권한 사용은 단독 확정 증거가 아니라 이상 징후로 취급한다."
+    }
+  ]
+}
