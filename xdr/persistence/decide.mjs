@@ -40,7 +40,7 @@ export function decide(alert) {
   const mitre = Array.isArray(alert?.rule?.mitre) ? alert.rule.mitre : [];
   const level = Number.isFinite(alert?.rule?.level) ? alert.rule.level : 0;
 
-  const serviceSignal = /서명 없는 새 서비스|서비스 등록|서비스 실행 파일이 바뀌었|서비스가 .*등록|서비스.*남도록 등록|unsigned.*service|service.*(created|registered|modified)/i.test(description);
+  const serviceSignal = /서명 없는 새 서비스|서비스 등록|서비스 실행 파일이 바뀌었|서비스가 .*등록|서비스.*남도록 등록|서비스 설명만|서비스가 .*멈췄다가|서비스.*다시 시작|unsigned.*service|service.*(created|registered|modified)/i.test(description);
   const unsignedSignal = /서명 없|서명은 확인되지 않|서명이 없습니다|unsigned|signature.*(missing|invalid|unknown)/i.test(description);
   const taskSignal = /예약 작업|scheduled task|scheduled task/i.test(description);
   const unfamiliarTask = /처음 보는|낯선|임의 문자열|평소 목록에 없|unfamiliar|unknown|random/i.test(description);
